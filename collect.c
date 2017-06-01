@@ -640,6 +640,15 @@ static void saveGoodTemplateInFile(const FlowSetV9Ipfix *new_template) {
   saveTemplateInFile(new_template,filename);
 }
 
+/**
+ * Remove const of a void pointer, with no warning. Use with caution!
+ */
+static void *not_const_cast(const void *p) {
+  void *r;
+  memcpy(&r, &p, sizeof(r));
+  return r;
+}
+
 #ifdef HAVE_ZOOKEEPER
 /* @TODO move to rb_zk.h? */
 
@@ -711,16 +720,6 @@ static void zoo_template_complete(int rc,void *_data) {
     free(data->buffer);
     free(data);
   }
-}
-
-/**
- * Remove const of a void pointer, with no warning. Use with caution, only for
- * zk functions!
- */
-static void *not_const_cast(const void *p) {
-  void *r;
-  memcpy(&r, &p, sizeof(r));
-  return r;
 }
 
 static void set_template_complete(int rc,
