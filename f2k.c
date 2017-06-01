@@ -29,9 +29,12 @@
 
 #include "jansson.h"
 #include "f2k.h"
+
 #include <net/ethernet.h>
 #include <pwd.h>
 #include <syslog.h>
+
+#include <ctype.h>
 
 /* *************************************** */
 

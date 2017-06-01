@@ -29,6 +29,7 @@
 #include <pwd.h>
 #include <syslog.h>
 #include <sys/stat.h>
+#include <ctype.h>
 
 #ifdef FREEBSD
 #include <pthread_np.h>

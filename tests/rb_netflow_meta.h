@@ -17,7 +17,11 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifdef __GNUC__
+#ifndef __GNUC_PREREQ
+#define __GNUC_PREREQ(maj, min) \
+	((__GNUC__ << 16) + __GNUC_MINOR__ >= ((maj) << 16) + (min))
+#endif
+
 // For some reason, GCC <= 4.7 does not provide these macros
 #if !__GNUC_PREREQ(4,8)
 #define __BYTE_ORDER__ __BYTE_ORDER
@@ -25,7 +29,6 @@
 #define __ORDER_BIG_ENDIAN__ __BIG_ENDIAN
 #define __builtin_bswap16(a) (((a)&0xff)<<8u)|((a)>>8u)
 #endif // GCC < 4.8
-#endif // __GNUC__
 
 #if __BYTE_ORDER__==__ORDER_LITTLE_ENDIAN__
 #define constexpr_be16toh(x) __builtin_bswap16(x)
