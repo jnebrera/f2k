@@ -29,6 +29,29 @@ mkl_toggle_option "Feature"  WITH_INTEGRATION_TESTS "--enable-integration-tests"
 mkl_toggle_option "Feature"  WITH_PRINT_BOUND_CHECKS "--enable-export-bounds-chks" "Checks bound in export functions (SLOW!)" "n"
 mkl_toggle_option "Feature"  WITH_COVERAGE           "--enable-coverage"           "Coverage build" "n"
 
+LIBRD_COMMIT=bb4ec7e65c8d3d411837e506e8d02f293b9a0a20
+function bootstrap_librd {
+  if [[ -d "librd" ]]; then
+    # Already bootstrapped
+    return 0
+  fi
+
+  mv "librd-${LIBRD_COMMIT}" librd
+  cd librd
+  make
+}
+
+function checks_librd {
+  mkl_meta_set "librd" "desc" "Magnus Edenhill lib for rapid development"
+  mkl_meta_set "librd" "bootstrap_url" "https://github.com/eugpermar/librd/archive/${LIBRD_COMMIT}.zip"
+  mkl_meta_set "librd" "bootstrap_cppflags" "-I./vendor/librd"
+  mkl_meta_set "librd" "bootstrap_static_lib" "vendor/librd/librd/librd.a"
+  mkl_meta_set "librd" "bootstrap_makefn" "bootstrap_librd"
+
+  mkl_lib_check --static=-lrd "librd" "" fail CC "-lrd -lpthread -lz -lrt" \
+       "#include <librd/rd.h>"
+}
+
 function checks_librdkafka {
     # Check that librdkafka is available, and allow to link it statically.
     mkl_meta_set "librdkafka" "desc" "librdkafka is available at http://github.com/edenhill/librdkafka."
@@ -51,8 +74,7 @@ function checks {
     mkl_define_set "OS name" "osName" "`uname`"
     checks_no_missing_initializers
 
-    mkl_lib_check --static=-lrd "librd" "" fail CC "-lrd -lpthread -lz -lrt" \
-       "#include <librd/rd.h>"
+    checks_librd
 
     mkl_lib_check "pcap" "" fail CC "-lpcap"
 
