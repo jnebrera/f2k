@@ -21,7 +21,6 @@ mkl_mkvar_append CPPFLAGS CPPFLAGS "-Wdisabled-optimization -Wshadow"
 mkl_mkvar_append CPPFLAGS CPPFLAGS "-Wcast-qual -Wunused -Wextra"
 
 mkl_toggle_option "Standard" WITH_LIBRDKAFKA        "--enable-librdkafka"          "librdkafka: For kafka export" "y"
-mkl_toggle_option "Standard" WITH_RBMAC_VENDOR      "--enable-rbmacvendor"         "RedBorder MACs vendor library" "y"
 mkl_toggle_option "Standard" WITH_GEOIP             "--enable-geoip"               "MaxMind (r) GeoIP library" "y"
 mkl_toggle_option "Standard" WITH_SFLOW             "--enable-sflow"               "S-FLOW Support" "n"
 mkl_toggle_option "Standard" WITH_ZOOKEEPER         "--enable-zookeeper"           "Apache Zookeeper support" "y"
@@ -61,12 +60,6 @@ function checks {
     if [ "x$WITH_LIBRDKAFKA" == "xy" ]; then
         checks_librdkafka
         mkl_define_set "Magnus Edenhill librdkafka" "HAVE_LIBRDKAFKA" "1"
-    fi
-
-    if [ "x$WITH_RBMAC_VENDOR" == "xy" ]; then
-        mkl_lib_check "rb_mac_vendor" HAVE_RB_MAC_VENDORS fail CC "-lrb_mac_vendors" \
-            "#include <rb_mac_vendors.h>"\
-        #mkl_define_set "RedBorder Macs vendors library" "HAVE_RB_MACS_VENDOR" "1"
     fi
 
     if [ "x$WITH_GEOIP" == "xy" ]; then

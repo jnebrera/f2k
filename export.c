@@ -24,6 +24,7 @@
 #include "util.h"
 #include "rb_mac.h"
 #include "rb_sensor.h"
+#include "rb_mac_vendors.h"
 
 #ifdef HAVE_UDNS
 #include "rb_dns_cache.h"

@@ -21,6 +21,7 @@
 #include "f2k.h"
 #include "rb_sensor.h"
 #include "template.h"
+#include "rb_mac_vendors.h"
 
 #include <assert.h>
 #include <dirent.h>

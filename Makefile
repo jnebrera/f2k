@@ -11,7 +11,7 @@ SRCS=	collect.c  export.c  globals.c f2k.c \
 	printbuf.c  rb_sensor.c  template.c \
 	util.c  version.c NumNameAssocTree.c \
 	rb_kafka.c rb_listener.c rb_zk.c \
-	rb_mac.c rb_dns_cache.c $(SRCS_SFLOW_y)
+	rb_mac.c rb_dns_cache.c rb_mac_vendors.c $(SRCS_SFLOW_y)
 OBJS=	$(SRCS:.c=.o)
 
 TESTS_C = $(wildcard tests/0*.c)

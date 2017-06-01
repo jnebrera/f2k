@@ -22,6 +22,7 @@
 #include "rb_kafka.h"
 #include "rb_zk.h"
 #include "rb_sensor.h"
+#include "rb_mac_vendors.h"
 
 #ifdef HAVE_UDNS
 #include "rb_dns_cache.h"
