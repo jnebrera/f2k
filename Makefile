@@ -151,4 +151,7 @@ coverage-html: coverage
 	genhtml --branch-coverage ${COVERAGE_INFO} --output-directory \
 				${COVERAGE_OUTPUT_DIRECTORY} > coverage.out
 
+dev-docker:
+	docker build docker/devel
+
 -include $(DEPS)
