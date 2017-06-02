@@ -214,10 +214,12 @@ int nf_test_teardown(void **state) {
   deleteGeoIPDatabases();
 #endif /* HAVE_GEOIP */
 
+#if WITH_ZOOKEEPER
   if (readOnlyGlobals.zk.zh != NULL) {
     stop_f2k_zk();
     readOnlyGlobals.zk.zh = NULL;
   }
+#endif // WITH_ZOOKEEPER
 
   if (readOnlyGlobals.rb_databases.sensors_info) {
     delete_rb_sensors_db(readOnlyGlobals.rb_databases.sensors_info);
@@ -352,6 +354,7 @@ static struct string_list *test_flow_i(const struct test_params *params,
     loadTemplates(params->template_save_path);
   }
 
+#if WITH_ZOOKEEPER
   if (params->zk_url) {
     if (readOnlyGlobals.zk.zh) {
       stop_f2k_zk();
@@ -359,6 +362,7 @@ static struct string_list *test_flow_i(const struct test_params *params,
     }
     init_f2k_zk(params->zk_url);
   }
+#endif // WITH_ZOOKEEPER
 
 #ifdef HAVE_UDNS
   if (params->dns_servers) {
