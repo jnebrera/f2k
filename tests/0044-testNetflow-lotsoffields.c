@@ -1,5 +1,6 @@
 /*
-  Copyright (C) 2016 Eneo Tecnologia S.L.
+  Copyright (C) 2015-2017 Eneo Tecnologia S.L.
+  Copyright (C) 2017 Eugenio Pérez.
   Author: Eugenio Perez <eupm90@gmail.com>
   Author: Diego Fernandez <bigomby@gmail.com>
   Based on Luca Deri nprobe 6.22 collector

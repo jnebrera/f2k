@@ -1,5 +1,6 @@
 /*
-  Copyright (C) 2016 Eneo Tecnologia S.L.
+  Copyright (C) 2015-2017 Eneo Tecnologia S.L.
+  Copyright (C) 2017 Eugenio Pérez.
   Author: Eugenio Perez <eupm90@gmail.com>
   Based on Luca Deri nprobe 6.22 collector
 
@@ -79,7 +80,7 @@ static int prepare_test_nf5_enrichment(void **state) {
 	struct test_params test_params = {
 		.config_json_path = "./tests/0026-testEnrichmentV5.json",
 		.host_list_path = "./tests/0011-data/",
-		.netflow_src_ip = 0x04030301,                          
+		.netflow_src_ip = 0x04030301,
 		.record = &record, .record_size = sizeof(record),
 		.checkdata = &checkdata, .checkdata_size = 1
 	};
