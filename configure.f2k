@@ -28,6 +28,7 @@ mkl_toggle_option "Standard" WITH_UDNS              "--enable-udns"             
 mkl_toggle_option "Feature"  WITH_INTEGRATION_TESTS "--enable-integration-tests"   "Run integration tests" "n"
 mkl_toggle_option "Feature"  WITH_PRINT_BOUND_CHECKS "--enable-export-bounds-chks" "Checks bound in export functions (SLOW!)" "n"
 mkl_toggle_option "Feature"  WITH_COVERAGE           "--enable-coverage"           "Coverage build" "n"
+mkl_toggle_option "Feature"  WITH_CMOCKA             "--enable-cmocka"             "Cmocka test framework" "n"
 
 LIBRD_COMMIT=bb4ec7e65c8d3d411837e506e8d02f293b9a0a20
 function bootstrap_librd {
@@ -50,6 +51,36 @@ function checks_librd {
 
   mkl_lib_check --static=-lrd "librd" "" fail CC "-lrd -lpthread -lz -lrt" \
        "#include <librd/rd.h>"
+}
+
+function bootstrap_cmocka {
+  if [[ ! -d cmocka ]]; then
+    mv cmocka-1.1.1 cmocka
+  fi
+
+  mkdir -p cmocka/build
+
+  if [[ ! -f "cmocka/build/Makefile" ]]; then
+    (cd cmocka/build; cmake -DWITH_STATIC_LIB=yes ..)
+  fi
+
+  if [[ ! -f "cmocka/build/src/libcmocka.a" ]]; then
+    (cd cmocka/build; make)
+  fi
+}
+
+function checks_cmocka {
+  mkl_meta_set "cmocka" "desc" "Elegant unit testing framework for C with support for mock objects"
+  mkl_meta_set "cmocka" "bootstrap_url" "https://cmocka.org/files/1.1/cmocka-1.1.1.tar.xz"
+  mkl_meta_set "cmocka" "bootstrap_cppflags" "-I./vendor/cmocka/cmocka/include/"
+  mkl_meta_set "cmocka" "bootstrap_static_lib" "vendor/cmocka/cmocka/build/src/libcmocka.a"
+  mkl_meta_set "cmocka" "bootstrap_makefn" "bootstrap_cmocka"
+
+  mkl_lib_check --static=-lcmocka "cmocka" "" fail CC "-lcmocka" \
+       "#include <stddef.h>
+        #include <setjmp.h>
+        #include <stdarg.h>
+        #include <cmocka.h>"
 }
 
 function checks_librdkafka {
@@ -75,6 +106,10 @@ function checks {
     checks_no_missing_initializers
 
     checks_librd
+
+    if [ "x$WITH_CMOCKA" == "xy" ]; then
+      checks_cmocka
+    fi
 
     mkl_lib_check "pcap" "" fail CC "-lpcap"
 

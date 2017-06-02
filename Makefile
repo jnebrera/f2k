@@ -107,7 +107,7 @@ tests/0023-testPrintbuf.test: TEST_DEPS = tests/rb_mem_wraps.o
 tests/%.test: CPPFLAGS := -I. $(CPPFLAGS)
 tests/%.test: tests/%.o tests/%.objdeps $(TEST_DEPS) $(OBJS)
 	@echo -e '\033[1;32m[Building]\033[0m\t $@'
-	@$(CC) $(CPPFLAGS) $(LDFLAGS) $< $(WRAP_ALLOC_FUNCTIONS) $(shell cat $(@:.test=.objdeps)) $(TEST_DEPS) -o $@ $(LIBS) -lcmocka > /dev/null
+	@$(CC) $(CPPFLAGS) $(LDFLAGS) $< $(WRAP_ALLOC_FUNCTIONS) $(shell cat $(@:.test=.objdeps)) $(TEST_DEPS) -o $@ $(LIBS) > /dev/null
 
 get_maxmind_db = wget $(1) -O $@.gz; gunzip $@
 
