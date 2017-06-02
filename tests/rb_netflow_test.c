@@ -628,17 +628,24 @@ void testFlow(void **state) {
       test_flow_i(&st->params.records[i], worker);
     }
 
-    rkmessage = rd_kafka_consumer_poll(test_consumer_rk, 2000);
-    if (rkmessage) {
-      st->ret.sl[1] =
-          (struct string_list *)calloc(1, sizeof(struct string_list));
-      st->ret.sl[1]->string =
-          (struct printbuf *)calloc(1, sizeof(struct printbuf));
-      st->ret.sl[1]->string->buf = (char *)calloc(rkmessage->len, sizeof(char));
-      st->ret.sl[1]->string->bpos = rkmessage->len;
-      st->ret.sl[1]->string->size = rkmessage->len;
-      memcpy(st->ret.sl[1]->string->buf, rkmessage->payload, rkmessage->len);
-      rd_kafka_message_destroy(rkmessage);
+    while (RD_KAFKA_RESP_ERR_NO_ERROR != rd_kafka_flush(
+      readOnlyGlobals.kafka.rk, 20))
+      ;
+
+    while (1) {
+      rkmessage = rd_kafka_consumer_poll(test_consumer_rk, 2000);
+      if (rkmessage && rkmessage->err != RD_KAFKA_RESP_ERR__PARTITION_EOF) {
+        st->ret.sl[1] =
+            (struct string_list *)calloc(1, sizeof(struct string_list));
+        st->ret.sl[1]->string =
+            (struct printbuf *)calloc(1, sizeof(struct printbuf));
+        st->ret.sl[1]->string->buf = (char *)calloc(rkmessage->len, sizeof(char));
+        st->ret.sl[1]->string->bpos = rkmessage->len;
+        st->ret.sl[1]->string->size = rkmessage->len;
+        memcpy(st->ret.sl[1]->string->buf, rkmessage->payload, rkmessage->len);
+        rd_kafka_message_destroy(rkmessage);
+        break;
+      }
     }
   } else {
     for (i = 0; i < st->params.records_size; ++i) {
