@@ -254,6 +254,10 @@ int nf_test_teardown(void **state) {
     readOnlyGlobals.kafka.rkt = NULL;
   }
 
+  if (readOnlyGlobals.udns.cache) {
+    dns_cache_done(readOnlyGlobals.udns.cache);
+  }
+
   free(readWriteGlobals);
   readWriteGlobals = NULL;
   return 0;
@@ -427,6 +431,13 @@ static struct string_list *test_flow_i(const struct test_params *params,
 
   if (params->normalize_directions) {
     readOnlyGlobals.normalize_directions = true;
+  }
+
+  if (params->dns_servers) {
+    static const size_t dns_cache_size_m = 2048;
+    static const size_t dns_cache_timeout_s = 60;
+
+    readOnlyGlobals.udns.cache = dns_cache_new(dns_cache_size_m, dns_cache_timeout_s);
   }
 
   if (test_producer_rkt) {
