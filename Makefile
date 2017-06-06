@@ -1,10 +1,11 @@
 
-include Makefile.config
+-include Makefile.config
 
 
 BIN=f2k
 
 .PHONY+=version.c
+
 
 SRCS_SFLOW_$(WITH_SFLOW) += sflow_collect.c
 SRCS=	collect.c  export.c  globals.c f2k.c \
@@ -16,12 +17,13 @@ OBJS=	$(SRCS:.c=.o)
 
 TESTS_C = $(wildcard tests/0*.c)
 
+TEST_REPORTS_DIR ?= tests/reports
 TESTS = $(TESTS_C:.c=.test)
 TESTS_OBJS = $(TESTS:.test=.o)
-TESTS_CHECKS_XML = $(TESTS_C:.c=.xml)
-TESTS_MEM_XML = $(TESTS_C:.c=.mem.xml)
-TESTS_HELGRIND_XML = $(TESTS_C:.c=.helgrind.xml)
-TESTS_DRD_XML = $(TESTS_C:.c=.drd.xml)
+TESTS_CHECKS_XML = $(TESTS_C:tests/%.c=$(TEST_REPORTS_DIR)/%.xml)
+TESTS_MEM_XML = $(TESTS_C:tests/%.c=$(TEST_REPORTS_DIR)/%.mem.xml)
+TESTS_HELGRIND_XML = $(TESTS_C:tests/%.c=$(TEST_REPORTS_DIR)/%.helgrind.xml)
+TESTS_DRD_XML = $(TESTS_C:tests/%.c=$(TEST_REPORTS_DIR)/%.drd.xml)
 TESTS_VALGRIND_XML = $(TESTS_MEM_XML) $(TESTS_HELGRIND_XML) $(TESTS_DRD_XML)
 TESTS_XML = $(TESTS_CHECKS_XML) $(TESTS_VALGRIND_XML)
 MAXMIND_DB = tests/asn.dat tests/country.dat tests/asnv6.dat tests/countryv6.dat
@@ -54,7 +56,7 @@ clean: bin-clean
 	@echo -e '\033[1;33m[Workdir cleaned]\033[0m\t $<'
 	@rm -f $(TESTS) $(TESTS_OBJS) $(TESTS_XML) $(COV_FILES)
 
-run_tests = tests/run_tests.sh $(1) $(TESTS_C:.c=)
+run_tests = tests/run_tests.sh $(1) $(TESTS_C:tests/%.c=$(TEST_REPORTS_DIR)/%)
 run_valgrind = $(VALGRIND) --tool=$(1) $(SUPPRESSIONS_VALGRIND_ARG) --xml=yes \
 					--xml-file=$(2) $(3)  &>/dev/null
 
@@ -83,21 +85,23 @@ drdchecks: $(TESTS_DRD_XML)
 helchecks: $(TESTS_HELGRIND_XML)
 	@$(call run_tests,-h)
 
-tests/%.mem.xml: tests/%.test $(MAXMIND_DB)
+$(TEST_REPORTS_DIR)/%.mem.xml: tests/%.test $(MAXMIND_DB)
 	@echo -e '\033[1;34m[Checking memory ]\033[0m\t $<'
 	-@$(call run_valgrind,memcheck,"$@","./$<")
 
-tests/%.helgrind.xml: tests/%.test $(MAXMIND_DB)
+$(TEST_REPORTS_DIR)/%.helgrind.xml: tests/%.test $(MAXMIND_DB)
 	@echo -e '\033[1;34m[Checking concurrency with HELGRIND]\033[0m\t $<'
 	-@$(call run_valgrind,helgrind,"$@","./$<")
 
-tests/%.drd.xml: tests/%.test $(MAXMIND_DB)
+$(TEST_REPORTS_DIR)/%.drd.xml: tests/%.test $(MAXMIND_DB)
 	@echo -e '\033[1;34m[Checking concurrency with DRD]\033[0m\t $<'
 	-@$(call run_valgrind,drd,"$@","./$<")
 
-tests/%.xml: tests/%.test $(MAXMIND_DB)
+$(TEST_REPORTS_DIR)/%.xml: tests/%.test $(MAXMIND_DB)
 	@echo -e '\033[1;34m[Testing ]\033[0m\t $<'
-	@CMOCKA_XML_FILE="$@" CMOCKA_MESSAGE_OUTPUT=XML "./$<" >/dev/null 2>&1
+	@# Cmocka will not overwrite the file if it exist
+	@rm -f "$@"
+	CMOCKA_XML_FILE="$@" CMOCKA_MESSAGE_OUTPUT=XML "./$<" >/dev/null 2>&1
 
 MALLOC_FUNCTIONS := $(strip malloc calloc realloc strdup __strdup)
 WRAP_ALLOC_FUNCTIONS := $(foreach fn, $(MALLOC_FUNCTIONS)\
@@ -152,6 +156,6 @@ coverage-html: coverage
 				${COVERAGE_OUTPUT_DIRECTORY} > coverage.out
 
 dev-docker:
-	docker build docker/devel
+	@docker build $(DOCKER_BUILD_PARAMETERS) docker/devel
 
 -include $(DEPS)

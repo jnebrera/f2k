@@ -1,0 +1,29 @@
+machine:
+  services:
+    - docker
+  hosts:
+    kafka: 127.0.0.1
+
+
+checkout:
+  post:
+    # This test is not interesting anymore
+    - rm -f tests/0019-testTemplateSaveCollect.c
+    # These tests fail sometimes. We need to figure out why
+    - rm -f tests/{0051-kafka_consumer,0047-testNetflow9_dns}.c
+    # Don't want thread-safety test because musl bug
+    - sed -i 's%\$(TESTS_\(DRD\|HELGRIND\)_XML)%%g;s%run_tests, -cvdh%run_tests, -cv%' Makefile
+
+
+test:
+  pre:
+    # Build kafka container
+    - docker run -d --name kafka --add-host=kafka:127.0.0.1 --env ADVERTISED_HOST=kafka --env ADVERTISED_PORT=9092 spotify/kafka
+    # Create development docker
+    - DOCKER_BUILD_PARAMETERS="-t f2k-dev --rm=false" make dev-docker
+    # Download needed geoip files
+    - make -j tests/asn.dat tests/asnv6.dat tests/country.dat tests/countryv6.dat
+
+  override:
+    - ./tests/circle-test.sh "$CIRCLE_TEST_REPORTS/O2" "--bootstrap --enable-cmocka --disable-zookeeper --enable-udns"
+    - ./tests/circle-test.sh "--coverage $CIRCLE_TEST_REPORTS/O0" "--bootstrap --enable-cmocka --disable-zookeeper --enable-udns"

@@ -1,5 +1,4 @@
-[![Build Status](https://travis-ci.org/redBorder/f2k.svg?branch=master)](https://travis-ci.org/redBorder/f2k)
-[![Coverage Status](https://coveralls.io/repos/github/redBorder/f2k/badge.svg?branch=master)](https://coveralls.io/github/redBorder/f2k?branch=master)
+[![CircleCI](https://circleci.com/gh/wizzie-io/f2k.svg?style=svg&circle-token=397effbb20c87f7bfb590fe5597d47e33e8d00dc)](https://circleci.com/gh/wizzie-io/f2k)
 
 # Flow 2 Kafka (f2k)
 

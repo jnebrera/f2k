@@ -4,10 +4,13 @@ FROM alpine:3.6
 RUN apk add --no-cache librdkafka jansson geoip libpcap udns zlib
 
 # Devel tools
-RUN apk add --no-cache --update bash make gcc ca-certificates librdkafka-dev \
-	jansson-dev geoip-dev libpcap-dev musl-dev udns-dev zlib-dev \
-	libarchive-tools openssl bsd-compat-headers fts-dev cmake cgdb \
-	&& update-ca-certificates
+RUN apk add --no-cache bash build-base ca-certificates librdkafka-dev \
+		jansson-dev geoip-dev libpcap-dev udns-dev zlib-dev \
+		libarchive-tools openssl bsd-compat-headers fts-dev cmake cgdb \
+		valgrind && \
+	apk add --no-cache \
+		--repository http://dl-3.alpinelinux.org/alpine/edge/testing/ lcov && \
+	update-ca-certificates
 # bootstrap-tools
 
 WORKDIR /app
