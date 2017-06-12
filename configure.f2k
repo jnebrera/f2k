@@ -28,7 +28,8 @@ mkl_toggle_option "Standard" WITH_UDNS              "--enable-udns"             
 mkl_toggle_option "Feature"  WITH_INTEGRATION_TESTS "--enable-integration-tests"   "Run integration tests" "n"
 mkl_toggle_option "Feature"  WITH_PRINT_BOUND_CHECKS "--enable-export-bounds-chks" "Checks bound in export functions (SLOW!)" "n"
 mkl_toggle_option "Feature"  WITH_COVERAGE           "--enable-coverage"           "Coverage build" "n"
-mkl_toggle_option "Feature"  WITH_CMOCKA             "--enable-cmocka"             "Cmocka test framework" "n"
+mkl_toggle_option "Feature"  WITH_TEST_FRAMEWORK     "--enable-test-framework"     "Cmocka+valgrind+xml-coreutils" "n"
+
 
 LIBRD_COMMIT=bb4ec7e65c8d3d411837e506e8d02f293b9a0a20
 function bootstrap_librd {
@@ -101,14 +102,41 @@ function checks_no_missing_initializers {
   fi
 }
 
+function xml_coreutils_bootstrap0 {
+  cd xml-coreutils-master
+  if [[ ! -f Makefile ]]; then
+    bash ./configure
+  fi
+  make
+}
+
+readonly XML_COREUTILS_DIR=vendor/xml-coreutils
+function xml_coreutils_bootstrap {
+  local CPPFLAGS=
+  local LIBS=
+  mkl_meta_set xmlcoreutils bootstrap_url https://github.com/eugpermar/xml-coreutils/archive/master.zip
+  mkl_meta_set xmlcoreutils bootstrap_makefn xml_coreutils_bootstrap0
+  mkl_lib_bootstrap xmlcoreutils XML_LIB_BOOTSTRAP fail
+}
+
+# Check & add cml coreutils
+function checks_xml_coreutils {
+    if ! mkl_command_check xml-utils XML_UTILS cont "xml-find"; then
+      xml_coreutils_bootstrap
+      mkl_command_check xml-utils XML_UTILS cont "$XML_COREUTILS_DIR/"
+    fi
+}
+
 function checks {
     mkl_define_set "OS name" "osName" "`uname`"
     checks_no_missing_initializers
 
     checks_librd
 
-    if [ "x$WITH_CMOCKA" == "xy" ]; then
+    if [ "x$WITH_TEST_FRAMEWORK" == "xy" ]; then
+      mkl_command_check valgrind HAVE_VALGRIND fail "valgrind --version"
       checks_cmocka
+      checks_xml_coreutils
     fi
 
     mkl_lib_check "pcap" "" fail CC "-lpcap"
