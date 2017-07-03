@@ -283,6 +283,7 @@ struct nf_test_state *prepare_tests(const struct test_params *test_params,
 	return st;
 }
 
+#ifdef HAVE_GEOIP
 static int load_geoip_databases(const char *geoip_path) {
 	const char *AS_path = NULL, *country_path = NULL;
 
@@ -296,10 +297,8 @@ static int load_geoip_databases(const char *geoip_path) {
 			"as-path" ,&AS_path,
 			"country-path" ,&country_path);
 
-#ifdef HAVE_GEOIP
 		readASs(AS_path);
 		readCountries(country_path);
-#endif /* HAVE_GEOIP */
 
 
 		free_json_unpacked(unpack_private);
@@ -307,6 +306,7 @@ static int load_geoip_databases(const char *geoip_path) {
 		return 1;
 	}
 }
+#endif /* HAVE_GEOIP */
 
 static struct string_list *test_flow_i(const struct test_params *params,
                                       worker_t *worker) {
@@ -343,13 +343,16 @@ static struct string_list *test_flow_i(const struct test_params *params,
     readOnlyGlobals.rb_databases.reload_macs_vendor_database = 1;
   }
 
+#ifdef HAVE_GEOIP
   if (params->geoip_path) {
+    deleteGeoIPDatabases();
     const int load_rc = load_geoip_databases(params->geoip_path);
     if (!load_rc) {
       fprintf(stderr, "[Coulnd't unpack %s]\n", params->geoip_path);
       skip();
     }
   }
+#endif /* HAVE_GEOIP */
 
   if (params->template_save_path) {
     snprintf(readOnlyGlobals.templates_database_path,
@@ -561,32 +564,31 @@ void testFlow(void **state) {
     char *group_id = rand_tmpl("test");
 
     readOnlyGlobals.kafka_consumer.conf = rd_kafka_conf_new();
-    rd_kafka_topic_conf_t *default_topic_conf = rd_kafka_topic_conf_new();
 
-    char errstr[512];
-    if (rd_kafka_conf_set(readOnlyGlobals.kafka_consumer.conf, "group.id",
-                          group_id, errstr,
-                          sizeof(errstr)) != RD_KAFKA_CONF_OK) {
-      traceEvent(TRACE_ERROR, "%% %s\n", errstr);
-    }
+    struct {
+      const char *key, *value;
+    } props[] = {{
+                     .key = "group.id", .value = group_id,
+                 },
+                 {
+                     .key = "metadata.broker.list",
+                     .value = st->params.records->kafka_consumer_url,
+                 },
+                 {
+                     .key = "offset.store.method", .value = "broker",
+                 },
+                 {
+                     .key = "auto.offset.reset", .value = "smallest",
+                 }};
 
-    if (rd_kafka_conf_set(readOnlyGlobals.kafka_consumer.conf,
-                          "metadata.broker.list",
-                          st->params.records->kafka_consumer_url, errstr,
-                          sizeof(errstr)) != RD_KAFKA_CONF_OK) {
-      traceEvent(TRACE_ERROR, "%% %s\n", errstr);
-    }
-
-    if (rd_kafka_topic_conf_set(default_topic_conf, "offset.store.method",
-                                "broker", errstr,
-                                sizeof(errstr)) != RD_KAFKA_CONF_OK) {
-      traceEvent(TRACE_ERROR, "%% %s\n", errstr);
-    }
-
-    if (rd_kafka_topic_conf_set(default_topic_conf, "auto.offset.reset",
-                                "smallest", errstr,
-                                sizeof(errstr)) != RD_KAFKA_CONF_OK) {
-      traceEvent(TRACE_ERROR, "%% %s\n", errstr);
+    for (i = 0; i < RD_ARRAYSIZE(props); ++i) {
+      char errstr[512];
+      const int set_rc =
+          rd_kafka_conf_set(readOnlyGlobals.kafka_consumer.conf, props[i].key,
+                            props[i].value, errstr, sizeof(errstr));
+      if (set_rc != RD_KAFKA_CONF_OK) {
+        fail_msg("Can't set property: %s", errstr);
+      }
     }
 
     readOnlyGlobals.kafka_consumer.topic = input_topic;
