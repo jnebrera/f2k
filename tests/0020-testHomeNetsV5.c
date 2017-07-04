@@ -309,7 +309,7 @@ static int prepare_test_nf5_home_nets_0(void **state,
 	{.key = "direction", .value=direction,}, \
 };
 
-static int prepare_test_nf5_home_nets_normalize(void *state) {
+static int prepare_test_nf5_home_nets_normalize(void **state) {
 	/* Can't guess direction => src is LAN, dst is WAN */
 	static const struct checkdata_value checkdata_values1_0[] =
 		CHECKDATA("lan_ip", "192.168.1.1", NULL, NULL,
@@ -365,7 +365,7 @@ static int prepare_test_nf5_home_nets_normalize(void *state) {
 				checkdata2, RD_ARRAYSIZE(checkdata2));
 }
 
-static int prepare_test_nf5_home_nets_dont_normalize(void *state) {
+static int prepare_test_nf5_home_nets_dont_normalize(void **state) {
 	/* Can't guess direction => src is LAN, dst is WAN */
 	static const struct checkdata_value checkdata_values1_0[] =
 		CHECKDATA("src", "192.168.1.1", NULL, NULL,
