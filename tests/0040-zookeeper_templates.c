@@ -32,6 +32,8 @@
         @test Extracting client mac based on flow direction
 */
 
+#ifdef TESTS_ZK_HOST
+
 struct TestV10Template {
   IPFIXFlowHeader flowHeader;
   IPFIXSet flowSetHeader;
@@ -138,7 +140,6 @@ static const struct TestV10Flow v10Flow = {
         },
 };
 
-#ifdef TESTS_ZK_HOST
 static int prepare_test_nf_template_save0(void **state, const void *record,
                                           size_t record_size,
                                           const struct checkdata *checkdata,

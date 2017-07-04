@@ -150,6 +150,7 @@ static const struct TestV10Flow v10Flow_bt32bitsbytespkts = V10_FLOW_BASIC(
 	0x00, 0x00, 0x00, 0x10, 0x00, 0x00, 0x00, 0x1f,
 	0x00, 0x00, 0x00, 0x10, 0x00, 0x00, 0x00, 0x00);
 
+/// Bigger than 32 bits bytes/packets
 static int prepare_test_big_bytes(void **state) {
 	static const struct checkdata_value checkdata_values_bytes[] =
 					CHECKDATA_BASE("68719476736","31");
@@ -163,6 +164,13 @@ static int prepare_test_big_bytes(void **state) {
 	static const struct checkdata checkdata_pkts = {
 		.checks=checkdata_values_pkts,
 		.size = RD_ARRAYSIZE(checkdata_values_pkts),
+	};
+
+	static const struct checkdata_value checkdata_values_bytespkts[] =
+					CHECKDATA_BASE("68719476767","68719476736");
+	static const struct checkdata checkdata_bytespkts = {
+		.checks=checkdata_values_bytespkts,
+		.size = RD_ARRAYSIZE(checkdata_values_bytespkts),
 	};
 
 #define TEST(config_path, mrecord, mrecord_size, checks, checks_sz) {          \
@@ -180,7 +188,10 @@ static int prepare_test_big_bytes(void **state) {
 						&checkdata_bytes, 1),
 		TEST(NULL, &v10Flow_bt32bitspkts,
 						sizeof(v10Flow_bt32bitspkts),
-						&checkdata_pkts, 1)
+						&checkdata_pkts, 1),
+		TEST(NULL, &v10Flow_bt32bitsbytespkts,
+						sizeof(checkdata_values_bytespkts),
+						&checkdata_bytespkts, 1)
 	};
 
 	*state = prepare_tests(test_params, RD_ARRAYSIZE(test_params));
