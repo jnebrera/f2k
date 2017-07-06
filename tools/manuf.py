@@ -1,10 +1,10 @@
-#/usr/bin/env python3
+#!/usr/bin/env python3
 
 import urllib.request
 import csv
 import codecs
 
-# Urls to download manufatures CSV
+# Urls to download manufactures CSV
 urls = [
 	'https://standards.ieee.org/develop/regauth/oui/oui.csv',
 	'https://standards.ieee.org/develop/regauth/oui28/mam.csv',
