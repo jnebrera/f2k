@@ -158,4 +158,8 @@ coverage-html: coverage
 dev-docker:
 	@docker build $(DOCKER_BUILD_PARAMETERS) docker/devel
 
+# TODO add $(BIN)
+release-docker:
+	@docker build $(DOCKER_BUILD_PARAMETERS) -f docker/release/Dockerfile .
+
 -include $(DEPS)

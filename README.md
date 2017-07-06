@@ -157,3 +157,21 @@ All [librdkafka options](https://github.com/edenhill/librdkafka/blob/master/CONF
   Recommended options are:
 - `-X=socket.max.fails=3`,
 - `-X=delivery.report.only.error=true`,
+
+## Docker
+
+### Docker image
+
+You can use docker image publicly available in
+`gcr.io/wizzie-registry/prozzie-f2k`. The environment options it supports are:
+
+| Parameter | Docker environment | Default | Description |
+|-----------|--------------------|---------|---|
+|--num-threads|F2K_NTHREADS | 3| Number of collector threads |
+|--kafka=kafka_broker|KAFKA_BROKERS | kafka| Kafka broker address |
+|--kafka=kafka_broker@topic|KAFKA_TOPIC | flow| Kafka topic to produce |
+|--collector-port|COLLECTOR_PORT |  2055| Port to listen to flow |
+|--enable-dns-ptr|ENABLE_DNS | - | Reverse DNS for hosts |
+|--dns-cache-size-mb|DNS_CACHE_SIZE_MB |  20480| DNS cache size |
+|--dns-cache-timeout-s|DNS_CACHE_TIMEOUT |  14400| DNS cache expiration time |
+|--rb-config=(file)|NETFLOW_PROBES | '{"sensors_networks":{}}'| Networks to listen netflow from |
