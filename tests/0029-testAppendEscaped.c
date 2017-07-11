@@ -21,37 +21,37 @@
 #include "f2k.h"
 #include "util.h"
 
-#include <stdarg.h>
-#include <stddef.h>
 #include <setjmp.h>
+
 #include <cmocka.h>
 
-static void test_append_escaped0(const char *input,const char *expected){
-	struct printbuf *kafka_line_buffer = printbuf_new();
-	append_escaped(kafka_line_buffer,input,strlen(input));
-	if(0!=strcmp(kafka_line_buffer->buf,expected)) {
-		fprintf(stderr,
-			"Error: Input [%s] produces output [%s], expected [%s]\n",
-			input,kafka_line_buffer->buf,expected);
+#include <stdarg.h>
+#include <stddef.h>
 
-		assert_true(0);
+static void test_append_escaped0(const char *input, const char *expected) {
+	struct printbuf *kafka_line_buffer = printbuf_new();
+	append_escaped(kafka_line_buffer, input, strlen(input));
+	if (0 != strcmp(kafka_line_buffer->buf, expected)) {
+		fail_msg("Error: Input [%s] produces output [%s], expected "
+			 "[%s]",
+			 input,
+			 kafka_line_buffer->buf,
+			 expected);
 	}
 	printbuf_free(kafka_line_buffer);
 }
 
-static void test_append_escaped()
-{
-	test_append_escaped0("test1","test1");
-	test_append_escaped0("test\"2","test\\\"2");
-	test_append_escaped0("test\"3\"","test\\\"3\\\"");
+static void test_append_escaped() {
+	test_append_escaped0("test1", "test1");
+	test_append_escaped0("test\"2", "test\\\"2");
+	test_append_escaped0("test\"3\"", "test\\\"3\\\"");
 
-	test_append_escaped0("test\\","test\\\\");
+	test_append_escaped0("test\\", "test\\\\");
 }
 
-int main(void){
-	const struct CMUnitTest tests[] = {
-		cmocka_unit_test(test_append_escaped)
-	};
+int main(void) {
+	static const struct CMUnitTest tests[] = {
+			cmocka_unit_test(test_append_escaped)};
 
 	return cmocka_run_group_tests(tests, NULL, NULL);
 }

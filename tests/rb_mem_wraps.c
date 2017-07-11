@@ -33,12 +33,13 @@ void mem_wraps_set_fail_in(size_t i) {
 #define COMMA ,
 
 #define WRAP_MEM_FN(fun, ret_t, args, real_args)                               \
-ret_t __real_##fun (args);                                              \
-ret_t __wrap_##fun (args); \
-ret_t __wrap_##fun (args) { \
-	return (mem_wrap_fail_in == 0 || --mem_wrap_fail_in) ?                 \
-						__real_##fun (real_args) : 0;\
-}
+	ret_t __real_##fun(args);                                              \
+	ret_t __wrap_##fun(args);                                              \
+	ret_t __wrap_##fun(args) {                                             \
+		return (mem_wrap_fail_in == 0 || --mem_wrap_fail_in)           \
+				       ? __real_##fun(real_args)               \
+				       : 0;                                    \
+	}
 
 WRAP_MEM_FN(malloc, void *, size_t m, m)
 WRAP_MEM_FN(realloc, void *, void *ptr COMMA size_t m, ptr COMMA m)

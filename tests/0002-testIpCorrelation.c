@@ -23,8 +23,10 @@
 #include "rb_netflow_test.h"
 
 #include <setjmp.h>
+
 #include <cmocka.h>
 
+// clang-format off
 static const NetFlow5Record record1 = {
 	.flowHeader = {
 		.version = 0x0500,     /* Current version=5*/
@@ -223,104 +225,198 @@ static const NetFlow5Record record1 = {
 	}
 };
 
+// clang-format on
+
 static const struct checkdata_value checkdata_values1[] = {
-	/* FIRST: src from google4, dst nothing */
-	{.key= "src", .value = "8.8.8.8",},
-	{.key= "src_net", .value = "8.8.8.0/24",},
-	{.key= "src_net_name", .value = "google8",},
-	{.key= "dst", .value = "9.9.9.9", },
-	{.key= "dst_net", .value = NULL,},
-	{.key= "dst_net_name", .value = NULL,},
+		/* FIRST: src from google4, dst nothing */
+		{
+				.key = "src", .value = "8.8.8.8",
+		},
+		{
+				.key = "src_net", .value = "8.8.8.0/24",
+		},
+		{
+				.key = "src_net_name", .value = "google8",
+		},
+		{
+				.key = "dst", .value = "9.9.9.9",
+		},
+		{
+				.key = "dst_net", .value = NULL,
+		},
+		{
+				.key = "dst_net_name", .value = NULL,
+		},
 };
 
 static const struct checkdata_value checkdata_values2[] = {
-	{.key = "src", .value = "8.8.4.4",},
-	{.key = "src_net", .value = "8.8.4.0/24",},
-	{.key = "src_net_name", .value = "google4",},
-	{.key = "dst", .value = "18.17.10.10", },
-	{.key = "dst_net", .value = NULL,},
-	{.key = "dst_net_name", .value = NULL},
+		{
+				.key = "src", .value = "8.8.4.4",
+		},
+		{
+				.key = "src_net", .value = "8.8.4.0/24",
+		},
+		{
+				.key = "src_net_name", .value = "google4",
+		},
+		{
+				.key = "dst", .value = "18.17.10.10",
+		},
+		{
+				.key = "dst_net", .value = NULL,
+		},
+		{
+				.key = "dst_net_name", .value = NULL,
+		},
 };
 
 /* src and dst does not belong to any known network */
 static const struct checkdata_value checkdata_values3[] = {
-	{.key = "src", .value = "4.5.8.8",},
-	{.key = "src_net", .value = NULL,},
-	{.key = "src_net_name", .value = NULL,},
-	{.key = "dst", .value = "18.17.10.10", },
-	{.key = "dst_net", .value = NULL,},
-	{.key = "dst_net_name", .value = NULL},
+		{
+				.key = "src", .value = "4.5.8.8",
+		},
+		{
+				.key = "src_net", .value = NULL,
+		},
+		{
+				.key = "src_net_name", .value = NULL,
+		},
+		{
+				.key = "dst", .value = "18.17.10.10",
+		},
+		{
+				.key = "dst_net", .value = NULL,
+		},
+		{
+				.key = "dst_net_name", .value = NULL,
+		},
 };
 
 /* dst from google1 */
 static const struct checkdata_value checkdata_values4[] = {
-	{.key = "src", .value = "9.9.9.9",},
-	{.key = "src_net", .value = NULL,},
-	{.key = "src_net_name", .value = NULL,},
-	{.key = "dst", .value = "8.8.8.8", },
-	{.key = "dst_net", .value = "8.8.8.0/24",},
-	{.key = "dst_net_name", .value = "google8",},
+		{
+				.key = "src", .value = "9.9.9.9",
+		},
+		{
+				.key = "src_net", .value = NULL,
+		},
+		{
+				.key = "src_net_name", .value = NULL,
+		},
+		{
+				.key = "dst", .value = "8.8.8.8",
+		},
+		{
+				.key = "dst_net", .value = "8.8.8.0/24",
+		},
+		{
+				.key = "dst_net_name", .value = "google8",
+		},
 };
 
 /* dst from google2 */
 static const struct checkdata_value checkdata_values5[] = {
-	{.key = "src", .value = "18.17.10.10",},
-	{.key = "src_net", .value = NULL,},
-	{.key = "src_net_name", .value = NULL,},
-	{.key = "dst", .value = "8.8.4.4", },
-	{.key = "dst_net", .value = "8.8.4.0/24",},
-	{.key = "dst_net_name", .value = "google4",},
+		{
+				.key = "src", .value = "18.17.10.10",
+		},
+		{
+				.key = "src_net", .value = NULL,
+		},
+		{
+				.key = "src_net_name", .value = NULL,
+		},
+		{
+				.key = "dst", .value = "8.8.4.4",
+		},
+		{
+				.key = "dst_net", .value = "8.8.4.0/24",
+		},
+		{
+				.key = "dst_net_name", .value = "google4",
+		},
 };
 
 /* src ip belongs to private1 */
 static const struct checkdata_value checkdata_values6[] = {
-	{.key = "src", .value = "192.168.1.1",},
-	{.key = "src_net", .value = "192.168.0.0/16",},
-	{.key = "src_net_name", .value = "private1",},
-	{.key = "dst", .value = "18.17.10.10", },
-	{.key = "dst_net", .value = NULL,},
-	{.key = "dst_net_name", .value = NULL,},
+		{
+				.key = "src", .value = "192.168.1.1",
+		},
+		{
+				.key = "src_net", .value = "192.168.0.0/16",
+		},
+		{
+				.key = "src_net_name", .value = "private1",
+		},
+		{
+				.key = "dst", .value = "18.17.10.10",
+		},
+		{
+				.key = "dst_net", .value = NULL,
+		},
+		{
+				.key = "dst_net_name", .value = NULL,
+		},
 };
 
 /* dst ip belongs to private1 */
 static const struct checkdata_value checkdata_values7[] = {
-	{.key = "src", .value = "18.17.10.10",},
-	{.key = "src_net", .value = NULL,},
-	{.key = "src_net_name", .value = NULL,},
-	{.key = "dst", .value = "192.168.1.1", },
-	{.key = "dst_net", .value = "192.168.0.0/16",},
-	{.key = "dst_net_name", .value = "private1",},
+		{
+				.key = "src", .value = "18.17.10.10",
+		},
+		{
+				.key = "src_net", .value = NULL,
+		},
+		{
+				.key = "src_net_name", .value = NULL,
+		},
+		{
+				.key = "dst", .value = "192.168.1.1",
+		},
+		{
+				.key = "dst_net", .value = "192.168.0.0/16",
+		},
+		{
+				.key = "dst_net_name", .value = "private1",
+		},
 };
 
 static int prepare_test_ip_correlation_v5(void **state) {
 	static const struct checkdata checkdata[] = {
-		{.size=RD_ARRAYSIZE(checkdata_values1), checkdata_values1},
-		{.size=RD_ARRAYSIZE(checkdata_values2), checkdata_values2},
-		{.size=RD_ARRAYSIZE(checkdata_values3), checkdata_values3},
-		{.size=RD_ARRAYSIZE(checkdata_values4), checkdata_values4},
-		{.size=RD_ARRAYSIZE(checkdata_values5), checkdata_values5},
-		{.size=RD_ARRAYSIZE(checkdata_values6), checkdata_values6},
-		{.size=RD_ARRAYSIZE(checkdata_values7), checkdata_values7},
+			{.size = RD_ARRAYSIZE(checkdata_values1),
+			 checkdata_values1},
+			{.size = RD_ARRAYSIZE(checkdata_values2),
+			 checkdata_values2},
+			{.size = RD_ARRAYSIZE(checkdata_values3),
+			 checkdata_values3},
+			{.size = RD_ARRAYSIZE(checkdata_values4),
+			 checkdata_values4},
+			{.size = RD_ARRAYSIZE(checkdata_values5),
+			 checkdata_values5},
+			{.size = RD_ARRAYSIZE(checkdata_values6),
+			 checkdata_values6},
+			{.size = RD_ARRAYSIZE(checkdata_values7),
+			 checkdata_values7},
 	};
 
-	struct test_params test_params[] = {
-		[0] = {
-			.config_json_path = "./tests/0000-testFlowV5.json",
-			.host_list_path = "./tests/0002-data/",
-			.netflow_src_ip = 0x04030201,
-			.record = &record1,
-			.record_size = sizeof(record1),
-			.checkdata = checkdata,
-			.checkdata_size = RD_ARRAYSIZE(checkdata),
-		},
+	// clang-format off
+	static const struct test_params test_params = {
+		.config_json_path = "./tests/0000-testFlowV5.json",
+		.host_list_path = "./tests/0002-data/",
+		.netflow_src_ip = 0x04030201,
+		.record = &record1,
+		.record_size = sizeof(record1),
+		.checkdata = checkdata,
+		.checkdata_size = RD_ARRAYSIZE(checkdata),
 	};
-	*state = prepare_tests(test_params, RD_ARRAYSIZE(test_params));
+	// clang-format on
+
+	*state = prepare_tests(&test_params, 1);
 	return *state == NULL;
 }
 
 int main() {
-	const struct CMUnitTest tests[] = {
-		cmocka_unit_test_setup(testFlow, prepare_test_ip_correlation_v5)
+	static const struct CMUnitTest tests[] = {cmocka_unit_test_setup(
+			testFlow, prepare_test_ip_correlation_v5)
 
 	};
 

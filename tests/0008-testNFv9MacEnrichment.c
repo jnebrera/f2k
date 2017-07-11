@@ -23,172 +23,120 @@
 #include "rb_netflow_test.h"
 
 #include <setjmp.h>
+
 #include <cmocka.h>
 
-struct TestV9Template{
-	V9FlowHeader flowHeader;
-	V9TemplateHeader flowSetHeader;
-	V9TemplateDef templateHeader;
-	V9FlowSet templateSet[10];
-};
+#define LOCAL_WIFI_SSID                                                        \
+	'l', 'o', 'c', 'a', 'l', '-', 'w', 'i', 'f', 'i', 0, 0, 0, 0, 0, 0, 0, \
+			0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
 
-struct TestV9Flow{
-	V9FlowHeader flowHeader;
-	V9TemplateHeader flowSetHeader;
-	const uint8_t buffer1[72];
-	const uint8_t buffer2[72];
-}__attribute__((packed));
+#define NF9_ENTITIES_BASE(X)                                                   \
+	X(STA_IPV4_ADDRESS, 4, 0, 10, 13, 94, 223)                             \
+	X(APPLICATION_ID, 4, 0, FLOW_APPLICATION_ID(13, 453))                  \
+	X(WLAN_SSID, 33, 0, LOCAL_WIFI_SSID)                                   \
+	X(DIRECTION, 1, 0, 0)                                                  \
+	X(IN_BYTES, 8, 0, UINT64_TO_UINT8_ARR(7603))                           \
+	X(IN_PKTS, 8, 0, UINT64_TO_UINT8_ARR(263))                             \
+	X(98, 1, 0, 0)                                                         \
+	X(195, 1, 0, 0)                                                        \
+	X(WAP_MAC_ADDRESS, 6, 0, 0x58, 0xbf, 0xea, 0x01, 0x5b, 0x40)
 
-static const struct TestV9Template v9Template = {
-	.flowHeader = {
-		/*uint16_t*/ .version = 0x0900,           /* Current version=9*/
-		/*uint16_t*/ .count = 0x0100,           /* The number of records in PDU. */
-		/*uint32_t*/ .sys_uptime = 0x00003039,     /* Current time in msecs since router booted */
-		/*uint32_t*/ .unix_secs = 0xe2336552,     /* Current seconds since 0000 UTC 1970 */
-		/*uint32_t*/ .flow_sequence = 0x38040000, /* Sequence number of total flows seen */
-		/*uint32_t*/ .source_id = 0x01000000,      /* Source id */
-	},
+#define NF9_ENTITIES(RT, R)                                                    \
+	RT(STA_MAC_ADDRESS, 6, 0, 0x00, 0x05, 0x69, 0x28, 0xb0, 0xc7)          \
+	NF9_ENTITIES_BASE(RT)
 
-	.flowSetHeader = {
-		/*uint16_t*/ .templateFlowset = 0x0000,
-		/*uint16_t*/ .flowsetLen = 0x3000,
-	},
-
-	.templateHeader = {
-		/*uint16_t*/ .templateId = 0x0301, /*259*/
-		/*uint16_t*/ .fieldCount = 0x0a00,
-	},
-
-	.templateSet = { /* all uint16_t*/
-		[0] = {.templateId = 0x6d01 /* 365: STA_MAC_ADDRESS  */, .flowsetLen = 0x0600},
-		[1] = {.templateId = 0x6e01 /* 366: STA_IPV4_ADDRESS */, .flowsetLen = 0x0400},
-		[2] = {.templateId = 0x5f00 /*  95: APPLICATION_ID */,   .flowsetLen = 0x0400},
-		[3] = {.templateId = 0x9300 /* 147: WLAN_SSID */, .flowsetLen = 0x2100},
-		[4] = {.templateId = 0x3d00 /*  61: DIRECTION */, .flowsetLen = 0x0100},
-		[5] = {.templateId = 0x0100 /*   1: BYTES */, .flowsetLen = 0x0800},
-		[6] = {.templateId = 0x0200 /*   2: PKTS */, .flowsetLen = 0x0800},
-		[7] = {.templateId = 0x6200 /*  98: Not processed */, .flowsetLen = 0x0100},
-		[8] = {.templateId = 0xc300 /* 195: Not processed */, .flowsetLen = 0x0100},
-		[9] = {.templateId = 0x616f /* 367: WAP_MAC_ADDRESS */, .flowsetLen = 0x0600},
-	}
-};
-
-static const struct TestV9Flow v9Flow = {
-	.flowHeader = {
-		/*uint16_t*/ .version = 0x0900,           /* Current version=9*/
-		/*uint16_t*/ .count = 0x0100,           /* The number of records in PDU. */
-		/*uint32_t*/ .sys_uptime = 0x00003039,     /* Current time in msecs since router booted */
-		/*uint32_t*/ .unix_secs = 0x98346552,     /* Current seconds since 0000 UTC 1970 */
-		/*uint32_t*/ .flow_sequence = 0x76040000, /* Sequence number of total flows seen */
-		/*uint32_t*/ .source_id = 0x01000000,      /* Source id */
-	},
-
-	.flowSetHeader = {
-		/*uint16_t*/ .templateFlowset = 0x0301,
-		/*uint16_t*/ .flowsetLen = 0x4800,
-	},
-
-	.buffer1 = {
-		0x00, 0x05, 0x69, 0x28, 0xb0, 0xc7, /* STA_MAC_ADDRESS: b8:14:c2:28:b0:c7 */
-		0x0a, 0x0d, 0x5e, 0xdf,             /* STA_IPV4_ADDRESS: 10.13.94.223 */
-		0x0d, 0x00, 0x01, 0xc5,             /* App Id: 13:453 */
-		0x6c, 0x6f, 0x63, 0x61, 0x6c, 0x2d, /* WLAN_SSID: "local-wifi" */
-		0x77, 0x69, 0x66, 0x69, 0x00, 0x00,
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-		0x00, 0x00, 0x00,
-		0x00,                               /* Direction: Ingress */
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x1d, 0xb3, /* Octetos */
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x07, /* Paquetes */
-		0x00, 0x00,                         /* Not used */
-		0x58, 0xbf, 0xea, 0x01, 0x5b, 0x40, /* WAP_MAC_ADDRESS */
-	},
-};
-
-static const struct TestV9Flow v9FlowBroadcast = {
-	.flowHeader = {
-		/*uint16_t*/ .version = 0x0900,           /* Current version=9*/
-		/*uint16_t*/ .count = 0x0100,           /* The number of records in PDU. */
-		/*uint32_t*/ .sys_uptime = 0x00003039,     /* Current time in msecs since router booted */
-		/*uint32_t*/ .unix_secs = 0x98346552,     /* Current seconds since 0000 UTC 1970 */
-		/*uint32_t*/ .flow_sequence = 0x76040000, /* Sequence number of total flows seen */
-		/*uint32_t*/ .source_id = 0x01000000,      /* Source id */
-	},
-
-	.flowSetHeader = {
-		/*uint16_t*/ .templateFlowset = 0x0301,
-		/*uint16_t*/ .flowsetLen = 0x4800,
-	},
-
-	.buffer1 = {
-		0xff, 0xff, 0xff, 0xff, 0xff, 0xff, /* STA_MAC_ADDRESS: ff:ff:ff:ff:ff:ff */
-		0x0a, 0x0d, 0x5e, 0xdf,             /* STA_IPV4_ADDRESS: 10.13.94.223 */
-		0x0d, 0x00, 0x01, 0xc5,             /* App Id: 13:453 */
-		0x6c, 0x6f, 0x63, 0x61, 0x6c, 0x2d, /* WLAN_SSID: "local-wifi" */
-		0x77, 0x69, 0x66, 0x69, 0x00, 0x00,
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-		0x00, 0x00, 0x00,
-		0x00,                               /* Direction: Ingress */
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x1d, 0xb3, /* Octetos */
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x07, /* Paquetes */
-		0x00, 0x00,                         /* Not used */
-		0x58, 0xbf, 0xea, 0x01, 0x5b, 0x40, /* WAP_MAC_ADDRESS */
-	},
-};
+#define NF9_BROADCAST_ENTITIES(RT, R)                                          \
+	RT(STA_MAC_ADDRESS, 6, 0, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff)          \
+	NF9_ENTITIES_BASE(RT)
 
 static const struct checkdata_value checkdata1[] = {
-	// before load mac vendor database
-	{.key = "type", .value="netflowv9"},
-	{.key = "client_mac", .value="00:05:69:28:b0:c7"},
-	{.key = "client_mac_vendor", .value=NULL},
+		// before load mac vendor database
+		{.key = "type", .value = "netflowv9"},
+		{.key = "client_mac", .value = "00:05:69:28:b0:c7"},
+		{.key = "client_mac_vendor", .value = NULL},
 };
 
 static const struct checkdata_value checkdata2[] = {
-	// After load mac vendor database
-	{.key = "type", .value="netflowv9"},
-	{.key = "client_mac", .value="00:05:69:28:b0:c7"},
-	{.key = "client_mac_vendor", .value="VMware"},
+		// After load mac vendor database
+		{.key = "type", .value = "netflowv9"},
+		{.key = "client_mac", .value = "00:05:69:28:b0:c7"},
+		{.key = "client_mac_vendor", .value = "VMware"},
 };
 
 static const struct checkdata_value checkdata3[] = {
-	{.key = "type", .value="netflowv9"},
-	{.key = "client_mac", .value="ff:ff:ff:ff:ff:ff"},
-	{.key = "client_mac_vendor", .value=NULL},
+		{.key = "type", .value = "netflowv9"},
+		{.key = "client_mac", .value = "ff:ff:ff:ff:ff:ff"},
+		{.key = "client_mac_vendor", .value = NULL},
 };
 
 //////////////
 static int prepare_test_nf9_mac(void **state) {
-#define TEST(config_path, mmac_db_path, mrecord, mrecord_size, checks, \
-								checks_size) { \
+#define TEMPLATE_ID 259
+#define V9_HEADER                                                              \
+	.sys_uptime = constexpr_be32toh(12345),                                \
+	.unix_secs = constexpr_be32toh(1382364130),                            \
+	.flow_sequence = constexpr_be32toh(1080),                              \
+	.source_id = constexpr_be32toh(1)
+
+	static const NF9_TEMPLATE(
+			v9Template, V9_HEADER, TEMPLATE_ID, NF9_ENTITIES);
+	static const NF9_FLOW(v9Flow, V9_HEADER, TEMPLATE_ID, NF9_ENTITIES);
+	static const NF9_FLOW(v9FlowBroadcast,
+			      V9_HEADER,
+			      TEMPLATE_ID,
+			      NF9_BROADCAST_ENTITIES);
+
+#define TEST(config_path,                                                      \
+	     mmac_db_path,                                                     \
+	     mrecord,                                                          \
+	     mrecord_size,                                                     \
+	     checks,                                                           \
+	     checks_size)                                                      \
+	{                                                                      \
 		.config_json_path = config_path,                               \
 		.mac_vendor_database_path = mmac_db_path,                      \
-		.netflow_src_ip = 0x04030201,                                  \
-		.record = mrecord, .record_size = mrecord_size,                \
-		.checkdata = checks, .checkdata_size = checks_size             \
+		.netflow_src_ip = 0x04030201, .record = mrecord,               \
+		.record_size = mrecord_size, .checkdata = checks,              \
+		.checkdata_size = checks_size                                  \
 	}
 
 	static const struct checkdata checkdata[] = {
-		[0] = {.size=RD_ARRAYSIZE(checkdata1), .checks=checkdata1},
-		[1] = {.size=RD_ARRAYSIZE(checkdata2), .checks=checkdata2},
-		[2] = {.size=RD_ARRAYSIZE(checkdata3), .checks=checkdata3},
+					[0] = {.size = RD_ARRAYSIZE(checkdata1),
+					       .checks = checkdata1},
+					[1] = {.size = RD_ARRAYSIZE(checkdata2),
+					       .checks = checkdata2},
+					[2] = {.size = RD_ARRAYSIZE(checkdata3),
+					       .checks = checkdata3},
 	};
 
+	static const struct test_params test_params[] = {
+					[0] = TEST("./tests/"
+						   "0000-testFlowV5.json",
+						   NULL,
+						   &v9Template,
+						   sizeof(v9Template),
+						   NULL,
+						   0),
 
-	struct test_params test_params[] = {
-		[0] = TEST("./tests/0000-testFlowV5.json", NULL,
-				&v9Template, sizeof(v9Template), NULL, 0),
-
-		[1] = TEST(NULL, NULL, &v9Flow, sizeof(v9Flow),
-					&checkdata[0], 1),
-		[2] = TEST(NULL, "./tests/0008-data/mac_vendors",
-					&v9Flow, sizeof(v9Flow),
-					&checkdata[1], 1),
-		[3] = TEST(NULL, NULL, &v9FlowBroadcast,
-					sizeof(v9FlowBroadcast),
-					&checkdata[2], 1),
+					[1] = TEST(NULL,
+						   NULL,
+						   &v9Flow,
+						   sizeof(v9Flow),
+						   &checkdata[0],
+						   1),
+					[2] = TEST(NULL,
+						   "./tests/0008-data/"
+						   "mac_vendors",
+						   &v9Flow,
+						   sizeof(v9Flow),
+						   &checkdata[1],
+						   1),
+					[3] = TEST(NULL,
+						   NULL,
+						   &v9FlowBroadcast,
+						   sizeof(v9FlowBroadcast),
+						   &checkdata[2],
+						   1),
 	};
 
 	*state = prepare_tests(test_params, RD_ARRAYSIZE(test_params));
@@ -197,7 +145,7 @@ static int prepare_test_nf9_mac(void **state) {
 
 int main() {
 	const struct CMUnitTest tests[] = {
-		cmocka_unit_test_setup(testFlow, prepare_test_nf9_mac),
+			cmocka_unit_test_setup(testFlow, prepare_test_nf9_mac),
 	};
 
 	return cmocka_run_group_tests(tests, nf_test_setup, nf_test_teardown);

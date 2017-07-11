@@ -23,223 +23,98 @@
 #include "rb_netflow_test.h"
 
 #include <setjmp.h>
+
 #include <cmocka.h>
 
-struct TestV10Template{
-	IPFIXFlowHeader flowHeader;
-	IPFIXSet flowSetHeader;
-	V9TemplateDef templateHeader; /* It's the same */
-	const uint8_t templateBuffer[92];
-};
+#define FLOW_TEMPLATE_ID 269
+#define FLOW_HEADER                                                            \
+	.unix_secs = constexpr_be32toh(1382637021),                            \
+	.flow_sequence = constexpr_be32toh(1080),                              \
+	.observation_id = constexpr_be32toh(1),
 
-struct TestV10Template_v6{
-	IPFIXFlowHeader flowHeader;
-	IPFIXSet flowSetHeader;
-	V9TemplateDef templateHeader; /* It's the same */
-	const uint8_t templateBuffer[92];
-};
+// clang-format off
+#define IPFIX_ENTITIES_BASE(X)                                                 \
+	X(IP_PROTOCOL_VERSION, 1, 0, 4)                                        \
+	X(PROTOCOL, 1, 0, 6)                                                   \
+	X(L4_SRC_PORT, 2, 0, UINT16_TO_UINT8_ARR(54713))                       \
+	X(L4_DST_PORT, 2, 0, UINT16_TO_UINT8_ARR(443))                         \
+	X(FLOW_END_REASON, 1, 0, 3)                                            \
+	X(BIFLOW_DIRECTION, 1, 0, 1)                                           \
+	X(FLOW_SAMPLER_ID, 1, 0, 0)                                            \
+	X(TRANSACTION_ID, 8, 0,                                                \
+	  0x8f, 0x63, 0xf3, 0x40, 0x00, 0x01, 0x00, 0x00)                      \
+	X(APPLICATION_ID, 4, 0, FLOW_APPLICATION_ID(13, 453))                  \
+	X(CISCO_URL, 0xffff, 9, 0x06, 0x03, 0x00, 0x00, 0x50, 0x34, 0x01)      \
+	X(CISCO_URL, 0xffff, 9, 0x06, 0x03, 0x00, 0x00, 0x50, 0x34, 0x02)      \
+	X(CISCO_URL, 0xffff, 9, 0x06, 0x03, 0x00, 0x00, 0x50, 0x34, 0x03)      \
+	X(CISCO_URL, 0xffff, 9, 0x06, 0x03, 0x00, 0x00, 0x50, 0x34, 0x04)      \
+	X(IN_BYTES, 8, 0, UINT64_TO_UINT8_ARR(2744))                           \
+	X(IN_PKTS, 4, 0, UINT32_TO_UINT8_ARR(31))                              \
+	X(FIRST_SWITCHED , 4, 0, 0x0f, 0xed, 0x0a, 0xc0)                       \
+	X(LAST_SWITCHED, 4, 0, 0x0f, 0xee, 0x18, 0x00)
+// clang-format on
 
-struct TestV10Flow{
-	IPFIXFlowHeader flowHeader;
-	IPFIXSet flowSetHeader;
-	const uint8_t buffer1[0x61 - sizeof(IPFIXSet) - sizeof(IPFIXFlowHeader)];
-}__attribute__((packed));
+#define IPFIX_ENTITIES(RT, R)                                                  \
+	RT(IPV4_SRC_ADDR, 4, 0, 10, 13, 122, 44)                               \
+	RT(IPV4_DST_ADDR, 4, 0, 66, 220, 152, 19)                              \
+	IPFIX_ENTITIES_BASE(RT)
 
-struct TestV10Flow_v6{
-	IPFIXFlowHeader flowHeader;
-	IPFIXSet flowSetHeader;
-	const uint8_t buffer1[0xdf - sizeof(IPFIXSet) - sizeof(IPFIXFlowHeader)];
-}__attribute__((packed));
+// clang-format off
+#define IPFIX_ENTITIES_V6(RT, R)                                               \
+	RT(IPV6_SRC_ADDR, 16, 0,                                               \
+	   0x20, 0x01, 0x04, 0x28, 0xce, 0x00, 0x20, 0x11,                     \
+	   0x0d, 0x5a, 0x60, 0x69, 0x24, 0x67, 0x9b, 0xd1)                     \
+	RT(IPV6_DST_ADDR, 16, 0,                                               \
+	   0x20, 0x01, 0x00, 0x08, 0x00, 0x00, 0x00, 0x00,                     \
+	   0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01)                     \
+	IPFIX_ENTITIES_BASE(RT)                                                \
+	R(IPV6_SRC_ADDR, 16, 0,                                                \
+	  0x20, 0x01, 0x00, 0x08, 0x00, 0x00, 0x00, 0x00,                      \
+	  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01)                      \
+	R(IPV6_DST_ADDR, 16, 0,                                                \
+	  0x20, 0x01, 0x04, 0x28, 0xce, 0x00, 0x20, 0x11,                      \
+	  0x0d, 0x5a, 0x60, 0x69, 0x24, 0x67, 0x9b, 0xd1)                      \
+	IPFIX_ENTITIES_BASE(R)
+// clang-format on
 
-static const struct TestV10Template v10Template = {
-	.flowHeader = {
-		/*uint16_t*/ .version = 0x0a00,           /* Current version=9*/
-		/*uint16_t*/ .len = 0x7400,           /* The number of records in PDU. */
-		/*uint32_t*/ .unix_secs = 0xdd5d6952,     /* Current time in msecs since router booted */
-		/*uint32_t*/ .flow_sequence = 0x38040000, /* Sequence number of total flows seen */
-		/*uint32_t*/ .observation_id = 0x00010000,      /* Source id */
-	},
+static const IPFIX_TEMPLATE(v10Template,
+			    FLOW_HEADER,
+			    FLOW_TEMPLATE_ID,
+			    IPFIX_ENTITIES);
 
-	.flowSetHeader = {
-		/*uint16_t*/ .set_id = 0x0200,
-		/*uint16_t*/ .set_len = 0x6400,
-	},
+static const IPFIX_FLOW(v10Flow, FLOW_HEADER, FLOW_TEMPLATE_ID, IPFIX_ENTITIES);
 
-	.templateHeader = {
-		/*uint16_t*/ .templateId = 0x0d01, /*269*/
-		/*uint16_t*/ .fieldCount = 0x1300,
-	},
+static const IPFIX_TEMPLATE(v10Template_v6,
+			    FLOW_HEADER,
+			    FLOW_TEMPLATE_ID,
+			    IPFIX_ENTITIES_V6);
 
-	.templateBuffer = {
-		0x00, 0x08, 0x00, 0x04, /* SRC ADDR */
-		0x00, 0x0c, 0x00, 0x04, /* DST ADDR */
-		0x00, 0x3c, 0x00, 0x01, /* IP VERSION */
-		0x00, 0x04, 0x00, 0x01, /* PROTO */
-		0x00, 0x07, 0x00, 0x02, /* SRC PORT */
-		0x00, 0x0b, 0x00, 0x02, /* DST PORT */
-		0x00, 0x88, 0x00, 0x01, /* flowEndreason */
-		0x00, 0xef, 0x00, 0x01, /* biflowDirection */
-		0x00, 0x30, 0x00, 0x01, /* FLOW_SAMPLER_ID */
-		0x01, 0x18, 0x00, 0x08, /* TRANSACTION_ID */
-		0x00, 0x5f, 0x00, 0x04, /* APPLICATION ID*/
-		0xaf, 0xcb, 0xff, 0xff, 0x00, 0x00, 0x00, 0x09, /* CISCO_URL, variable length */
-		0xaf, 0xcb, 0xff, 0xff, 0x00, 0x00, 0x00, 0x09, /* CISCO_URL, variable length */
-		0xaf, 0xcb, 0xff, 0xff, 0x00, 0x00, 0x00, 0x09, /* CISCO_URL, variable length */
-		0xaf, 0xcb, 0xff, 0xff, 0x00, 0x00, 0x00, 0x09, /* CISCO_URL, variable length */
-		0x00, 0x01, 0x00, 0x08, /* BYTES: */
-		0x00, 0x02, 0x00, 0x04, /* PKTS*/
-		0x00, 0x16, 0x00, 0x04, /* FIRST_SWITCHED */
-		0x00, 0x15, 0x00, 0x04, /* LAST_SWITCHED*/
+static const IPFIX_FLOW(v10Flow_v6,
+			FLOW_HEADER,
+			FLOW_TEMPLATE_ID,
+			IPFIX_ENTITIES_V6);
+
+#define CHECKDATA(left_name,                                                   \
+		  left_ip,                                                     \
+		  left_net,                                                    \
+		  left_net_name,                                               \
+		  right_name,                                                  \
+		  right_ip,                                                    \
+		  right_net,                                                   \
+		  right_net_name,                                              \
+		  direction)                                                   \
+	{                                                                      \
+		{.key = left_name, .value = left_ip},                          \
+				{.key = left_name "_net", .value = left_net},  \
+				{.key = left_name "_net_name",                 \
+				 .value = left_net_name},                      \
+				{.key = right_name, .value = right_ip},        \
+				{.key = right_name "_net",                     \
+				 .value = right_net},                          \
+				{.key = right_name "_net_name",                \
+				 .value = right_net_name},                     \
+				{.key = "direction", .value = direction},      \
 	}
-};
-
-static const struct TestV10Flow v10Flow = {
-	.flowHeader = {
-		/*uint16_t*/ .version = 0x0a00,           /* Current version=9*/
-		/*uint16_t*/ .len = 0x6100,           /* The number of records in PDU. */
-		/*uint32_t*/ .unix_secs = 0xdd5d6952,     /* Current time in msecs since router booted */
-		/*uint32_t*/ .flow_sequence = 0x38040000, /* Sequence number of total flows seen */
-		/*uint32_t*/ .observation_id = 0x00010000,      /* Source id */
-	},
-
-	.flowSetHeader = {
-		/*uint16_t*/ .set_id = 0x0d01,
-		/*uint16_t*/ .set_len = 0x5100,
-	},
-
-	.buffer1 = {
-		0x0a, 0x0d, 0x7a, 0x2c, /* SRC ADDR 10.13.122.44 */
-		0x42, 0xdc, 0x98, 0x13, /* DST ADDR 66.220.152.19*/
-		0x04,                   /* IP VERSION: 4 */
-		0x06,                   /* PROTO: 6 */
-		0xd5, 0xb9,             /* SRC PORT: 54713 */
-		0x01, 0xbb,             /* DST PORT: 443 */
-		0x03,                   /* flowEndreason */
-		0x01,                   /* biflowDirection */
-		0x00,                   /* FLOW_SAMPLER_ID */
-		0x8f, 0x63, 0xf3, 0x40, 0x00, 0x01, 0x00, 0x00, /* TRANSACTION_ID */
-		0x0d, 0x00, 0x01, 0xc5, /* APPLICATION ID 13:453 */
-		0x06, 0x03, 0x00, 0x00, 0x50, 0x34, 0x01, /* CISCO_URL */
-		0x06, 0x03, 0x00, 0x00, 0x50, 0x34, 0x02, /* CISCO_URL */
-		0x06, 0x03, 0x00, 0x00, 0x50, 0x34, 0x03, /* CISCO_URL */
-		0x06, 0x03, 0x00, 0x00, 0x50, 0x34, 0x04, /* CISCO_URL */
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0a, 0xb8, /* BYTES: 2744 */
-		0x00, 0x00, 0x00, 0x1f, /* PKTS: 31*/
-		0x0f, 0xed, 0x0a, 0xc0, /* FIRST_SWITCHED:  */
-		0x0f, 0xee, 0x18, 0x00, /* LAST_SWITCHED: */
-	},
-};
-
-static const struct TestV10Template_v6 v10Template_v6 = {
-	.flowHeader = {
-		/*uint16_t*/ .version = 0x0a00,           /* Current version=9*/
-		/*uint16_t*/ .len = 0x7400,           /* The number of records in PDU. */
-		/*uint32_t*/ .unix_secs = 0xdd5d6952,     /* Current time in msecs since router booted */
-		/*uint32_t*/ .flow_sequence = 0x38040000, /* Sequence number of total flows seen */
-		/*uint32_t*/ .observation_id = 0x00010000,      /* Source id */
-	},
-
-	.flowSetHeader = {
-		/*uint16_t*/ .set_id = 0x0200,
-		/*uint16_t*/ .set_len = 0x6400,
-	},
-
-	.templateHeader = {
-		/*uint16_t*/ .templateId = 0x0d02, /*269*/
-		/*uint16_t*/ .fieldCount = 0x1300,
-	},
-
-	.templateBuffer = {
-		0x00, 0x1b, 0x00, 0x10, /* SRC ADDR */
-		0x00, 0x1c, 0x00, 0x10, /* DST ADDR */
-		0x00, 0x3c, 0x00, 0x01, /* IP VERSION */
-		0x00, 0x04, 0x00, 0x01, /* PROTO */
-		0x00, 0x07, 0x00, 0x02, /* SRC PORT */
-		0x00, 0x0b, 0x00, 0x02, /* DST PORT */
-		0x00, 0x88, 0x00, 0x01, /* flowEndreason */
-		0x00, 0xef, 0x00, 0x01, /* biflowDirection */
-		0x00, 0x30, 0x00, 0x01, /* FLOW_SAMPLER_ID */
-		0x01, 0x18, 0x00, 0x08, /* TRANSACTION_ID */
-		0x00, 0x5f, 0x00, 0x04, /* APPLICATION ID*/
-		0xaf, 0xcb, 0xff, 0xff, 0x00, 0x00, 0x00, 0x09, /* CISCO_URL, variable length */
-		0xaf, 0xcb, 0xff, 0xff, 0x00, 0x00, 0x00, 0x09, /* CISCO_URL, variable length */
-		0xaf, 0xcb, 0xff, 0xff, 0x00, 0x00, 0x00, 0x09, /* CISCO_URL, variable length */
-		0xaf, 0xcb, 0xff, 0xff, 0x00, 0x00, 0x00, 0x09, /* CISCO_URL, variable length */
-		0x00, 0x01, 0x00, 0x08, /* BYTES: */
-		0x00, 0x02, 0x00, 0x04, /* PKTS*/
-		0x00, 0x16, 0x00, 0x04, /* FIRST_SWITCHED */
-		0x00, 0x15, 0x00, 0x04, /* LAST_SWITCHED*/
-	}
-};
-
-static const struct TestV10Flow_v6 v10Flow_v6 = {
-	.flowHeader = {
-		/*uint16_t*/ .version = 0x0a00,           /* Current version=9*/
-		/*uint16_t*/ .len = 0xdf00,           /* The number of records in PDU. */
-		/*uint32_t*/ .unix_secs = 0xdd5d6952,     /* Current time in msecs since router booted */
-		/*uint32_t*/ .flow_sequence = 0x38040000, /* Sequence number of total flows seen */
-		/*uint32_t*/ .observation_id = 0x00010000,      /* Source id */
-	},
-
-	.flowSetHeader = {
-		/*uint16_t*/ .set_id = 0x0d02,
-		/*uint16_t*/ .set_len = 0xcf00,
-	},
-
-	.buffer1 = {
-		0x20, 0x01, 0x04, 0x28, 0xce, 0x00, 0x20, 0x11, 0x0d, 0x5a, 0x60, 0x69, 0x24, 0x67, 0x9b, 0xd1, /* SRC ADDR */
-		0x20, 0x01, 0x00, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, /* DST ADDR */
-		0x04,                   /* IP VERSION: 4 */
-		0x06,                   /* PROTO: 6 */
-		0xd5, 0xb9,             /* SRC PORT: 54713 */
-		0x01, 0xbb,             /* DST PORT: 443 */
-		0x03,                   /* flowEndreason */
-		0x01,                   /* biflowDirection */
-		0x00,                   /* FLOW_SAMPLER_ID */
-		0x8f, 0x63, 0xf3, 0x40, 0x00, 0x01, 0x00, 0x00, /* TRANSACTION_ID */
-		0x0d, 0x00, 0x01, 0xc5, /* APPLICATION ID 13:453 */
-		0x06, 0x03, 0x00, 0x00, 0x50, 0x34, 0x01, /* CISCO_URL */
-		0x06, 0x03, 0x00, 0x00, 0x50, 0x34, 0x02, /* CISCO_URL */
-		0x06, 0x03, 0x00, 0x00, 0x50, 0x34, 0x03, /* CISCO_URL */
-		0x06, 0x03, 0x00, 0x00, 0x50, 0x34, 0x04, /* CISCO_URL */
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0a, 0xb8, /* BYTES: 2744 */
-		0x00, 0x00, 0x00, 0x1f, /* PKTS: 31*/
-		0x0f, 0xee, 0x18, 0x00, /* FIRST_SWITCHED:  */
-		0x0f, 0xee, 0x18, 0x00, /* LAST_SWITCHED: */
-
-		0x20, 0x01, 0x00, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, /* SRC ADDR */
-		0x20, 0x01, 0x04, 0x28, 0xce, 0x00, 0x20, 0x11, 0x0d, 0x5a, 0x60, 0x69, 0x24, 0x67, 0x9b, 0xd1, /* DST ADDR */
-		0x04,                   /* IP VERSION: 4 */
-		0x06,                   /* PROTO: 6 */
-		0xd5, 0xb9,             /* SRC PORT: 54713 */
-		0x01, 0xbb,             /* DST PORT: 443 */
-		0x03,                   /* flowEndreason */
-		0x01,                   /* biflowDirection */
-		0x00,                   /* FLOW_SAMPLER_ID */
-		0x8f, 0x63, 0xf3, 0x40, 0x00, 0x01, 0x00, 0x00, /* TRANSACTION_ID */
-		0x0d, 0x00, 0x01, 0xc5, /* APPLICATION ID 13:453 */
-		0x06, 0x03, 0x00, 0x00, 0x50, 0x34, 0x01, /* CISCO_URL */
-		0x06, 0x03, 0x00, 0x00, 0x50, 0x34, 0x02, /* CISCO_URL */
-		0x06, 0x03, 0x00, 0x00, 0x50, 0x34, 0x03, /* CISCO_URL */
-		0x06, 0x03, 0x00, 0x00, 0x50, 0x34, 0x04, /* CISCO_URL */
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0a, 0xb8, /* BYTES: 2744 */
-		0x00, 0x00, 0x00, 0x1f, /* PKTS: 31*/
-		0x0f, 0xee, 0x18, 0x00, /* FIRST_SWITCHED:  */
-		0x0f, 0xee, 0x18, 0x00, /* LAST_SWITCHED: */
-	},
-};
-
-#define CHECKDATA(left_name, left_ip, left_net, left_net_name, \
-		  right_name, right_ip, right_net, right_net_name, \
-		  direction) { \
-	{.key = left_name, .value=left_ip}, \
-	{.key = left_name "_net", .value=left_net}, \
-	{.key = left_name "_net_name", .value=left_net_name}, \
-	{.key = right_name, .value=right_ip}, \
-	{.key = right_name "_net", .value=right_net}, \
-	{.key = right_name "_net_name", .value=right_net_name}, \
-	{.key = "direction", .value=direction}, \
-}
 
 static int prepare_test_nf10_home_nets0(void **state,
 					const struct checkdata *checkdata_v4,
@@ -247,141 +122,181 @@ static int prepare_test_nf10_home_nets0(void **state,
 					const struct checkdata *checkdata_v6,
 					const size_t checkdata_v6_size,
 					const bool normalize_directions) {
-#define TEST(nf_dev_ip, mrecord, mrecord_size, checks, checks_sz, ...) {       \
-		.netflow_src_ip = nf_dev_ip,                                   \
-		.record = mrecord, .record_size = mrecord_size,                \
-		.checkdata = checks, .checkdata_size = checks_sz,              \
-		__VA_ARGS__                                                    \
+#define TEST(nf_dev_ip, mrecord, mrecord_size, checks, checks_sz, ...)         \
+	{                                                                      \
+		.netflow_src_ip = nf_dev_ip, .record = mrecord,                \
+		.record_size = mrecord_size, .checkdata = checks,              \
+		.checkdata_size = checks_sz, __VA_ARGS__                       \
 	}
 
-#define TEST_TEMPLATE_FLOW0(nf_dev_ip, template, template_size, flow,          \
-		flow_size, checks, checks_sz, ...)                             \
-	TEST(nf_dev_ip, template, template_size, NULL, 0, __VA_ARGS__),        \
-	TEST(nf_dev_ip, flow, flow_size, checks, checks_sz,)
+#define TEST_TEMPLATE_FLOW0(nf_dev_ip,                                         \
+			    template,                                          \
+			    template_size,                                     \
+			    flow,                                              \
+			    flow_size,                                         \
+			    checks,                                            \
+			    checks_sz,                                         \
+			    ...)                                               \
+	TEST(nf_dev_ip, template, template_size, NULL, 0, __VA_ARGS__)         \
+	, TEST(nf_dev_ip, flow, flow_size, checks, checks_sz, )
 
 #define TEST_TEMPLATE_FLOW_V4(nf_dev_ip, ...)                                  \
 	TEST_TEMPLATE_FLOW0(nf_dev_ip,                                         \
-		&v10Template, sizeof(v10Template), &v10Flow, sizeof(v10Flow),  \
-		checkdata_v4, checkdata_v4_size, __VA_ARGS__)
+			    &v10Template,                                      \
+			    sizeof(v10Template),                               \
+			    &v10Flow,                                          \
+			    sizeof(v10Flow),                                   \
+			    checkdata_v4,                                      \
+			    checkdata_v4_size,                                 \
+			    __VA_ARGS__)
 
 #define TEST_TEMPLATE_FLOW_V6(nf_dev_ip, ...)                                  \
 	TEST_TEMPLATE_FLOW0(nf_dev_ip,                                         \
-		&v10Template_v6, sizeof(v10Template_v6),                       \
-		&v10Flow_v6, sizeof(v10Flow_v6),                               \
-		checkdata_v6, checkdata_v6_size, __VA_ARGS__)
+			    &v10Template_v6,                                   \
+			    sizeof(v10Template_v6),                            \
+			    &v10Flow_v6,                                       \
+			    sizeof(v10Flow_v6),                                \
+			    checkdata_v6,                                      \
+			    checkdata_v6_size,                                 \
+			    __VA_ARGS__)
 
-	/* different span port configuration should not affect when no mac is
-	implied */
-	struct test_params test_params[] = {
-		TEST_TEMPLATE_FLOW_V4(0x04030201,
+	// clang-format off
+	// different span port configuration should not affect when no mac is
+	// implied
+	const struct test_params test_params[] = {
+		TEST_TEMPLATE_FLOW_V4(
+			0x04030201,
 			.config_json_path = "./tests/0022-testHomeNetsV10.json",
 			.host_list_path = "./tests/0011-data/",
 			.normalize_directions = normalize_directions),
 
-		TEST_TEMPLATE_FLOW_V4(0x04030301,),
-		TEST_TEMPLATE_FLOW_V4(0x04030401,),
-		TEST_TEMPLATE_FLOW_V6(0x04030201,),
-		TEST_TEMPLATE_FLOW_V6(0x04030301,),
-		TEST_TEMPLATE_FLOW_V6(0x04030401,),
+		TEST_TEMPLATE_FLOW_V4(0x04030301, ),
+		TEST_TEMPLATE_FLOW_V4(0x04030401, ),
+		TEST_TEMPLATE_FLOW_V6(0x04030201, ),
+		TEST_TEMPLATE_FLOW_V6(0x04030301, ),
+		TEST_TEMPLATE_FLOW_V6(0x04030401, ),
 	};
+	// clang-format on
 
 	*state = prepare_tests(test_params, RD_ARRAYSIZE(test_params));
 	return *state == NULL;
 }
 
 static int prepare_test_nf10_home_nets_normalize(void **state) {
-#define CHECKS(t_checks) {.size = RD_ARRAYSIZE(t_checks), .checks = t_checks}
+#define CHECKS(t_checks)                                                       \
+	{ .size = RD_ARRAYSIZE(t_checks), .checks = t_checks }
 	static const struct checkdata_value checkdata_values1[] =
-	CHECKDATA("lan_ip", "10.13.122.44",
-			    "10.13.30.0/16",
-			    "users",
-		  "wan_ip", "66.220.152.19",
-			    NULL,
-			    NULL,
-			    "upstream");
+			CHECKDATA("lan_ip",
+				  "10.13.122.44",
+				  "10.13.30.0/16",
+				  "users",
+				  "wan_ip",
+				  "66.220.152.19",
+				  NULL,
+				  NULL,
+				  "upstream");
 
 	static const struct checkdata_value checkdata_values_v6_1[] =
-	CHECKDATA("lan_ip", "2001:0428:ce00:2011:0d5a:6069:2467:9bd1",
-			    "2001:0428:ce00:0000:0000:0000:0000:0000/48",
-			    "users6",
-		  "wan_ip", "2001:0008:0000:0000:0000:0000:0000:0001",
-			    NULL,
-			    NULL,
-			    "upstream");
+			CHECKDATA("lan_ip",
+				  "2001:0428:ce00:2011:0d5a:6069:2467:9bd1",
+				  "2001:0428:ce00:0000:0000:0000:0000:0000/48",
+				  "users6",
+				  "wan_ip",
+				  "2001:0008:0000:0000:0000:0000:0000:0001",
+				  NULL,
+				  NULL,
+				  "upstream");
 
 	static const struct checkdata_value checkdata_values_v6_2[] =
-	CHECKDATA("wan_ip", "2001:0008:0000:0000:0000:0000:0000:0001",
-			    NULL,
-			    NULL,
-		  "lan_ip", "2001:0428:ce00:2011:0d5a:6069:2467:9bd1",
-			    "2001:0428:ce00:0000:0000:0000:0000:0000/48",
-			    "users6",
-			    "downstream");
+			CHECKDATA("wan_ip",
+				  "2001:0008:0000:0000:0000:0000:0000:0001",
+				  NULL,
+				  NULL,
+				  "lan_ip",
+				  "2001:0428:ce00:2011:0d5a:6069:2467:9bd1",
+				  "2001:0428:ce00:0000:0000:0000:0000:0000/48",
+				  "users6",
+				  "downstream");
 
 	static const struct checkdata checkdata_v4[] = {
-		CHECKS(checkdata_values1),
+			CHECKS(checkdata_values1),
 	};
 	static const struct checkdata checkdata_v6[] = {
-		CHECKS(checkdata_values_v6_1), CHECKS(checkdata_values_v6_2),
+			CHECKS(checkdata_values_v6_1),
+			CHECKS(checkdata_values_v6_2),
 	};
 
 	static const bool normalize_directions = true;
 	return prepare_test_nf10_home_nets0(state,
-				checkdata_v4, RD_ARRAYSIZE(checkdata_v4),
-				checkdata_v6, RD_ARRAYSIZE(checkdata_v6),
-				normalize_directions);
+					    checkdata_v4,
+					    RD_ARRAYSIZE(checkdata_v4),
+					    checkdata_v6,
+					    RD_ARRAYSIZE(checkdata_v6),
+					    normalize_directions);
 }
 
 static int prepare_test_nf10_home_nets_dont_normalize(void **state) {
-#define CHECKS(t_checks) {.size = RD_ARRAYSIZE(t_checks), .checks = t_checks}
+#define CHECKS(t_checks)                                                       \
+	{ .size = RD_ARRAYSIZE(t_checks), .checks = t_checks }
 	static const struct checkdata_value checkdata_values1[] =
-	CHECKDATA("src", "10.13.122.44",
-			    "10.13.30.0/16",
-			    "users",
-		  "dst", "66.220.152.19",
-			    NULL,
-			    NULL,
-			    NULL);
+			CHECKDATA("src",
+				  "10.13.122.44",
+				  "10.13.30.0/16",
+				  "users",
+				  "dst",
+				  "66.220.152.19",
+				  NULL,
+				  NULL,
+				  NULL);
 
 	static const struct checkdata_value checkdata_values_v6_1[] =
-	CHECKDATA("src", "2001:0428:ce00:2011:0d5a:6069:2467:9bd1",
-			    "2001:0428:ce00:0000:0000:0000:0000:0000/48",
-			    "users6",
-		  "dst", "2001:0008:0000:0000:0000:0000:0000:0001",
-			    NULL,
-			    NULL,
-			    NULL);
+			CHECKDATA("src",
+				  "2001:0428:ce00:2011:0d5a:6069:2467:9bd1",
+				  "2001:0428:ce00:0000:0000:0000:0000:0000/48",
+				  "users6",
+				  "dst",
+				  "2001:0008:0000:0000:0000:0000:0000:0001",
+				  NULL,
+				  NULL,
+				  NULL);
 
 	static const struct checkdata_value checkdata_values_v6_2[] =
-	CHECKDATA("src", "2001:0008:0000:0000:0000:0000:0000:0001",
-			    NULL,
-			    NULL,
-		  "dst", "2001:0428:ce00:2011:0d5a:6069:2467:9bd1",
-			    "2001:0428:ce00:0000:0000:0000:0000:0000/48",
-			    "users6",
-			    NULL);
+			CHECKDATA("src",
+				  "2001:0008:0000:0000:0000:0000:0000:0001",
+				  NULL,
+				  NULL,
+				  "dst",
+				  "2001:0428:ce00:2011:0d5a:6069:2467:9bd1",
+				  "2001:0428:ce00:0000:0000:0000:0000:0000/48",
+				  "users6",
+				  NULL);
 
 	static const struct checkdata checkdata_v4[] = {
-		CHECKS(checkdata_values1),
+			CHECKS(checkdata_values1),
 	};
 	static const struct checkdata checkdata_v6[] = {
-		CHECKS(checkdata_values_v6_1), CHECKS(checkdata_values_v6_2),
+			CHECKS(checkdata_values_v6_1),
+			CHECKS(checkdata_values_v6_2),
 	};
 
 	static const bool normalize_directions = false;
 	return prepare_test_nf10_home_nets0(state,
-				checkdata_v4, RD_ARRAYSIZE(checkdata_v4),
-				checkdata_v6, RD_ARRAYSIZE(checkdata_v6),
-				normalize_directions);
+					    checkdata_v4,
+					    RD_ARRAYSIZE(checkdata_v4),
+					    checkdata_v6,
+					    RD_ARRAYSIZE(checkdata_v6),
+					    normalize_directions);
 }
 
 int main() {
-	const struct CMUnitTest tests[] = {
+	// clang-format off
+	static const struct CMUnitTest tests[] = {
 		cmocka_unit_test_setup(testFlow,
-			prepare_test_nf10_home_nets_dont_normalize),
+				prepare_test_nf10_home_nets_dont_normalize),
 		cmocka_unit_test_setup(testFlow,
-			prepare_test_nf10_home_nets_normalize),
+				prepare_test_nf10_home_nets_normalize),
 	};
+	// clang-format on
 
 	return cmocka_run_group_tests(tests, nf_test_setup, nf_test_teardown);
 }

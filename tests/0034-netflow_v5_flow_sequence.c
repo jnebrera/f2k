@@ -23,13 +23,14 @@
 #include "rb_netflow_test.h"
 
 #include <setjmp.h>
-#include <cmocka.h>
 
+#include <cmocka.h>
 
 /*
 	@test Extracting client mac based on flow direction
 */
 
+// clang-format off
 static const NetFlow5Record record = {
 	.flowHeader = {
 		.version = 0x0500,     /* Current version=5*/
@@ -119,44 +120,48 @@ static const NetFlow5Record record = {
 		}
 	}
 };
+// clang-format on
 
-#define DECL_CHECKDATA_VALUE_FLOW_SEQUENCE(i) \
-	static const struct checkdata_value checkdata_values_flow_seq_##i[] = { \
-		{.key = "flow_sequence", .value= #i }, \
+#define DECL_CHECKDATA_VALUE_FLOW_SEQUENCE(i)                                  \
+	static const struct checkdata_value checkdata_values_flow_seq_##i[] =  \
+			{                                                      \
+					{.key = "flow_sequence", .value = #i}, \
 	};
 #define CHECKDATA_VALUE_FLOW_SEQUENCE(i) checkdata_values_flow_seq_##i
 
-#define CHECKDATA_VALUE_ENTRY(i) \
-	{.size = RD_ARRAYSIZE(CHECKDATA_VALUE_FLOW_SEQUENCE(i)), \
-		.checks=CHECKDATA_VALUE_FLOW_SEQUENCE(i)}
+#define CHECKDATA_VALUE_ENTRY(i)                                               \
+	{                                                                      \
+		.size = RD_ARRAYSIZE(CHECKDATA_VALUE_FLOW_SEQUENCE(i)),        \
+		.checks = CHECKDATA_VALUE_FLOW_SEQUENCE(i)                     \
+	}
 
 DECL_CHECKDATA_VALUE_FLOW_SEQUENCE(436469760);
 DECL_CHECKDATA_VALUE_FLOW_SEQUENCE(436469761);
 DECL_CHECKDATA_VALUE_FLOW_SEQUENCE(436469762);
 
 static const struct checkdata checkdata_v5_flow_seq[] = {
-	CHECKDATA_VALUE_ENTRY(436469760),
-	CHECKDATA_VALUE_ENTRY(436469761),
-	CHECKDATA_VALUE_ENTRY(436469762),
+		CHECKDATA_VALUE_ENTRY(436469760),
+		CHECKDATA_VALUE_ENTRY(436469761),
+		CHECKDATA_VALUE_ENTRY(436469762),
 };
 
 static int prepare_test_nf5_flow_seq(void **state) {
-	struct test_params test_params = {
-		.config_json_path =
-			"./tests/0000-testFlowV5.json",
-		.netflow_src_ip = 0x04030201,
-		.record = &record, .record_size = sizeof(record),
-		.checkdata = checkdata_v5_flow_seq,
-		.checkdata_size = RD_ARRAYSIZE(checkdata_v5_flow_seq)
-	};
+	static const struct test_params test_params = {
+			.config_json_path = "./tests/0000-testFlowV5.json",
+			.netflow_src_ip = 0x04030201,
+			.record = &record,
+			.record_size = sizeof(record),
+			.checkdata = checkdata_v5_flow_seq,
+			.checkdata_size = RD_ARRAYSIZE(checkdata_v5_flow_seq)};
 
 	*state = prepare_tests(&test_params, 1);
 	return *state == NULL;
 }
 
 int main() {
-	const struct CMUnitTest tests[] = {
-		cmocka_unit_test_setup(testFlow, prepare_test_nf5_flow_seq),
+	static const struct CMUnitTest tests[] = {
+			cmocka_unit_test_setup(testFlow,
+					       prepare_test_nf5_flow_seq),
 	};
 
 	return cmocka_run_group_tests(tests, nf_test_setup, nf_test_teardown);

@@ -23,12 +23,14 @@
 #include "f2k.h"
 
 #include <setjmp.h>
+
 #include <cmocka.h>
 
+// clang-format off
 static const NetFlow5Record record1 = {
 	.flowHeader = {
-		.version = 0x0500,     /* Current version=5*/
-		.count = 0x0300,       /* The number of records in PDU. */
+		.version = constexpr_be16toh(5),     /* Current version=5*/
+		.count = constexpr_be16toh(3),       /* The number of records in PDU. */
 		.sys_uptime = 12345,    /* Current time in msecs since router booted */
 		.unix_secs = 12345,    /* Current seconds since 0000 UTC 1970 */
 		.unix_nsecs = 12345,   /* Residual nanoseconds since 0000 UTC 1970 */
@@ -156,32 +158,39 @@ static const struct checkdata_value checkdata_values3[] = {
 	{.key="timestamp", .value="958571626"},
 };
 
+// clang-format on
+
 static int prepare_test_nf_many_v5(void **state) {
 	static const struct checkdata checkdata[] = {
-		{.size = RD_ARRAYSIZE(checkdata_values1), .checks = checkdata_values1},
-		{.size = RD_ARRAYSIZE(checkdata_values2), .checks = checkdata_values2},
-		{.size = RD_ARRAYSIZE(checkdata_values3), .checks = checkdata_values3},
+			{.size = RD_ARRAYSIZE(checkdata_values1),
+			 .checks = checkdata_values1},
+			{.size = RD_ARRAYSIZE(checkdata_values2),
+			 .checks = checkdata_values2},
+			{.size = RD_ARRAYSIZE(checkdata_values3),
+			 .checks = checkdata_values3},
 	};
 
-	struct test_params test_params[] = {
-		[0] = {
-			.config_json_path = "./tests/0000-testFlowV5.json",
-			.host_list_path = NULL,
-			.netflow_src_ip = 0x04030201,
-			.record = &record1,
-			.record_size = sizeof(record1),
-			.checkdata = checkdata,
-			.checkdata_size = RD_ARRAYSIZE(checkdata),
-		},
+	// clang-format off
+
+	static const struct test_params test_params = {
+		.config_json_path = "./tests/0000-testFlowV5.json",
+		.netflow_src_ip = 0x04030201,
+		.record = &record1,
+		.record_size = sizeof(record1),
+		.checkdata = checkdata,
+		.checkdata_size = RD_ARRAYSIZE(checkdata),
 	};
 
-	*state = prepare_tests(test_params, RD_ARRAYSIZE(test_params));
+	// clang-format on
+
+	*state = prepare_tests(&test_params, 1);
 	return *state == NULL;
 }
 
 int main() {
-	const struct CMUnitTest tests[] = {
-		cmocka_unit_test_setup(testFlow, prepare_test_nf_many_v5),
+	static const struct CMUnitTest tests[] = {
+			cmocka_unit_test_setup(testFlow,
+					       prepare_test_nf_many_v5),
 	};
 
 	return cmocka_run_group_tests(tests, nf_test_setup, nf_test_teardown);

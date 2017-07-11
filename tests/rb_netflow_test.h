@@ -26,9 +26,9 @@
 
 #include "rb_netflow_meta.h"
 
+#include <stdbool.h>
 #include <stdint.h>
 #include <string.h>
-#include <stdbool.h>
 
 int nf_test_setup(void **state);
 
@@ -62,7 +62,7 @@ struct nf_test_state {
 
 			const struct checkdata *checkdata;
 			size_t checkdata_size;
-		} *records;
+		} * records;
 		size_t records_size;
 	} params;
 	struct {
@@ -70,8 +70,8 @@ struct nf_test_state {
 	} ret;
 };
 
-struct nf_test_state *prepare_tests(const struct test_params *test_params,
-						size_t test_params_size);
+struct nf_test_state *
+prepare_tests(const struct test_params *test_params, size_t test_params_size);
 
 void testFlow(void **state);
 

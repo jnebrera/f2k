@@ -22,11 +22,12 @@
 
 #include "f2k.h"
 
+#include <setjmp.h>
+
+#include <cmocka.h>
 #include <jansson.h>
 
-#include <setjmp.h>
-#include <cmocka.h>
-
+// clang-format off
 static const NetFlow5Record record1 = {
 	.flowHeader = {
 		.version = constexpr_be16toh(5),          /* Current version=5*/
@@ -64,51 +65,52 @@ static const NetFlow5Record record1 = {
 		}
 	}
 };
+// clang-format on
 
 static const struct checkdata_value checkdata_values[] = {
-	{.key="type",.value="netflowv5"},
-	{.key="src",.value="8.8.8.8"},
-	{.key="dst",.value="10.10.10.10"},
-	{.key="input_snmp",.value="0"},
-	{.key="output_snmp",.value="65280"},
-	{.key="pkts",.value="65536"},
-	{.key="bytes",.value="4587520"},
-	{.key="tos",.value="0"},
-	{.key="src_port",.value="443"},
-	{.key="dst_port",.value="10101"},
-	{.key="tcp_flags",.value=NULL},
-	{.key="l4_proto",.value="2"},
-	{.key="engine_type",.value="0"},
-	{.key="sensor_ip",.value="4.3.2.1"},
-	{.key="first_switched",.value="1389604657"},
-	{.key="timestamp",.value="1389604657"},
+		{.key = "type", .value = "netflowv5"},
+		{.key = "src", .value = "8.8.8.8"},
+		{.key = "dst", .value = "10.10.10.10"},
+		{.key = "input_snmp", .value = "0"},
+		{.key = "output_snmp", .value = "65280"},
+		{.key = "pkts", .value = "65536"},
+		{.key = "bytes", .value = "4587520"},
+		{.key = "tos", .value = "0"},
+		{.key = "src_port", .value = "443"},
+		{.key = "dst_port", .value = "10101"},
+		{.key = "tcp_flags", .value = NULL},
+		{.key = "l4_proto", .value = "2"},
+		{.key = "engine_type", .value = "0"},
+		{.key = "sensor_ip", .value = "4.3.2.1"},
+		{.key = "first_switched", .value = "1389604657"},
+		{.key = "timestamp", .value = "1389604657"},
 };
 
 static int prepare_test_nf_v5(void **state) {
-	static const struct checkdata checkdata = {
-		.checks = checkdata_values,
-		.size = RD_ARRAYSIZE(checkdata_values),
+	static const struct checkdata checks = {
+			.checks = checkdata_values,
+			.size = RD_ARRAYSIZE(checkdata_values),
 	};
 
-	struct test_params test_params[] = {
-		[0] = {
-			.config_json_path = "./tests/0000-testFlowV5.json",
-			.host_list_path = NULL,
-			.netflow_src_ip = 0x04030201,
-			.record = &record1,
-			.record_size = sizeof(record1),
-			.checkdata = &checkdata,
-			.checkdata_size = 1,
-		},
+	// clang-format off
+	static const struct test_params test_params = {
+		.config_json_path = "./tests/0000-testFlowV5.json",
+		.host_list_path = NULL,
+		.netflow_src_ip = 0x04030201,
+		.record = &record1,
+		.record_size = sizeof(record1),
+		.checkdata = &checks,
+		.checkdata_size = 1,
 	};
+	// clang-format on
 
-	*state = prepare_tests(test_params, RD_ARRAYSIZE(test_params));
+	*state = prepare_tests(&test_params, 1);
 	return *state == NULL;
 }
 
 int main() {
-	const struct CMUnitTest tests[] = {
-		cmocka_unit_test_setup(testFlow, prepare_test_nf_v5),
+	static const struct CMUnitTest tests[] = {
+			cmocka_unit_test_setup(testFlow, prepare_test_nf_v5),
 	};
 
 	return cmocka_run_group_tests(tests, nf_test_setup, nf_test_teardown);

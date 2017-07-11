@@ -23,12 +23,14 @@
 #include "rb_netflow_test.h"
 
 #include <setjmp.h>
+
 #include <cmocka.h>
 
 #ifdef HAVE_GEOIP
 
 static const char CONFIG_FILE_PATH[] = "./tests/0004-testGeoIp-databases.json";
 
+// clang-format off
 static const NetFlow5Record record1 = {
 	.flowHeader = {
 		.version = 0x0500,     /* Current version=5*/
@@ -121,208 +123,300 @@ static const NetFlow5Record record1 = {
 		},
 	}
 };
+// clang-format on
 
 #define NETFLOW_DIRECTION_INGRESS 0
-#define NETFLOW_DIRECTION_EGRESS  1
+#define NETFLOW_DIRECTION_EGRESS 1
 
-#define IPFIX_BASE_ENTITIES(X, SRC_IP_1, SRC_IP_2, SRC_IP_3, SRC_IP_4, \
-			 DST_IP_1, DST_IP_2, DST_IP_3, DST_IP_4, \
-			 T_DIRECTION) \
-	X(IPV4_SRC_ADDR, 4, 0, SRC_IP_1, SRC_IP_2, SRC_IP_3, SRC_IP_4) \
-	X(IPV4_DST_ADDR, 4, 0, DST_IP_1, DST_IP_2, DST_IP_3, DST_IP_4) \
-	X(IP_PROTOCOL_VERSION, 1, 0, 4) \
-	X(PROTOCOL, 1, 0, 6) \
-	X(L4_SRC_PORT, 2, 0, UINT16_TO_UINT8_ARR(54713)) \
-	X(L4_DST_PORT, 2, 0, UINT16_TO_UINT8_ARR(443)) \
-	X(FLOW_END_REASON, 1, 0, 3) \
-	X(DIRECTION, 1, 0, T_DIRECTION) \
-	X(FLOW_SAMPLER_ID, 1, 0, 0) \
-	X(TRANSACTION_ID, 8, 0, 0x8f, 0x63, 0xf3, 0x40, \
-				0x00, 0x01, 0x00, 0x00) \
-	X(APPLICATION_ID, 4, 0, FLOW_APPLICATION_ID(13, 459)) \
-	X(IN_BYTES, 8, 0, UINT64_TO_UINT8_ARR(7603)) \
-	X(IN_PKTS, 4, 0, UINT32_TO_UINT8_ARR(263)) \
-	X(FIRST_SWITCHED, 4, 0, 0x0f, 0xed, 0x0a, 0xc0) \
+#define IPFIX_BASE_ENTITIES(X,                                                 \
+			    SRC_IP_1,                                          \
+			    SRC_IP_2,                                          \
+			    SRC_IP_3,                                          \
+			    SRC_IP_4,                                          \
+			    DST_IP_1,                                          \
+			    DST_IP_2,                                          \
+			    DST_IP_3,                                          \
+			    DST_IP_4,                                          \
+			    T_DIRECTION)                                       \
+	X(IPV4_SRC_ADDR, 4, 0, SRC_IP_1, SRC_IP_2, SRC_IP_3, SRC_IP_4)         \
+	X(IPV4_DST_ADDR, 4, 0, DST_IP_1, DST_IP_2, DST_IP_3, DST_IP_4)         \
+	X(IP_PROTOCOL_VERSION, 1, 0, 4)                                        \
+	X(PROTOCOL, 1, 0, 6)                                                   \
+	X(L4_SRC_PORT, 2, 0, UINT16_TO_UINT8_ARR(54713))                       \
+	X(L4_DST_PORT, 2, 0, UINT16_TO_UINT8_ARR(443))                         \
+	X(FLOW_END_REASON, 1, 0, 3)                                            \
+	X(DIRECTION, 1, 0, T_DIRECTION)                                        \
+	X(FLOW_SAMPLER_ID, 1, 0, 0)                                            \
+	X(TRANSACTION_ID,                                                      \
+	  8,                                                                   \
+	  0,                                                                   \
+	  0x8f,                                                                \
+	  0x63,                                                                \
+	  0xf3,                                                                \
+	  0x40,                                                                \
+	  0x00,                                                                \
+	  0x01,                                                                \
+	  0x00,                                                                \
+	  0x00)                                                                \
+	X(APPLICATION_ID, 4, 0, FLOW_APPLICATION_ID(13, 459))                  \
+	X(IN_BYTES, 8, 0, UINT64_TO_UINT8_ARR(7603))                           \
+	X(IN_PKTS, 4, 0, UINT32_TO_UINT8_ARR(263))                             \
+	X(FIRST_SWITCHED, 4, 0, 0x0f, 0xed, 0x0a, 0xc0)                        \
 	X(LAST_SWITCHED, 4, 0, 0x0f, 0xee, 0x18, 0x00)
 
-#define TEST_IPFIX_FLOW_HEADER \
-	.unix_secs = constexpr_be32toh(1382364130), \
-	.flow_sequence = constexpr_be32toh(1080), \
+#define TEST_IPFIX_FLOW_HEADER                                                 \
+	.unix_secs = constexpr_be32toh(1382364130),                            \
+	.flow_sequence = constexpr_be32toh(1080),                              \
 	.observation_id = constexpr_be32toh(256),
 
 #define TEST_IPFIX_TEMPLATE_ID 259
 
-#define GEO_IPFIX_ENTITIES(RT, R) \
-	/* no GEOIP information */ \
-	IPFIX_BASE_ENTITIES(RT, 192, 168, 1, 1, 192, 168, 1, 2,  \
-		NETFLOW_DIRECTION_INGRESS) \
-	/* FIRST: src/lan from US, dst/wan private*/ \
-	IPFIX_BASE_ENTITIES(R, 8, 8, 8, 8, 192, 168, 1, 2, \
-		NETFLOW_DIRECTION_INGRESS) \
-	/* FIRST: src/lan private, dst/wan from ES */ \
-	IPFIX_BASE_ENTITIES(R, 192, 168, 1, 2,  83, 56, 40, 199,  \
-		NETFLOW_DIRECTION_INGRESS)
+#define GEO_IPFIX_ENTITIES(RT, R)                                              \
+	/* no GEOIP information */                                             \
+	IPFIX_BASE_ENTITIES(RT,                                                \
+			    192,                                               \
+			    168,                                               \
+			    1,                                                 \
+			    1,                                                 \
+			    192,                                               \
+			    168,                                               \
+			    1,                                                 \
+			    2,                                                 \
+			    NETFLOW_DIRECTION_INGRESS)                         \
+	/* FIRST: src/lan from US, dst/wan private*/                           \
+	IPFIX_BASE_ENTITIES(R,                                                 \
+			    8,                                                 \
+			    8,                                                 \
+			    8,                                                 \
+			    8,                                                 \
+			    192,                                               \
+			    168,                                               \
+			    1,                                                 \
+			    2,                                                 \
+			    NETFLOW_DIRECTION_INGRESS)                         \
+	/* FIRST: src/lan private, dst/wan from ES */                          \
+	IPFIX_BASE_ENTITIES(R,                                                 \
+			    192,                                               \
+			    168,                                               \
+			    1,                                                 \
+			    2,                                                 \
+			    83,                                                \
+			    56,                                                \
+			    40,                                                \
+			    199,                                               \
+			    NETFLOW_DIRECTION_INGRESS)
 
-static const IPFIX_TEMPLATE(v10Template, TEST_IPFIX_FLOW_HEADER,
-		TEST_IPFIX_TEMPLATE_ID, GEO_IPFIX_ENTITIES);
+static const IPFIX_TEMPLATE(v10Template,
+			    TEST_IPFIX_FLOW_HEADER,
+			    TEST_IPFIX_TEMPLATE_ID,
+			    GEO_IPFIX_ENTITIES);
 
-static const IPFIX_FLOW(v10Flow, TEST_IPFIX_FLOW_HEADER,
-	TEST_IPFIX_TEMPLATE_ID, GEO_IPFIX_ENTITIES);
+static const IPFIX_FLOW(v10Flow,
+			TEST_IPFIX_FLOW_HEADER,
+			TEST_IPFIX_TEMPLATE_ID,
+			GEO_IPFIX_ENTITIES);
 
 /*
  * TEST 1: No normalization
  */
 
 /// Test a V5 flow
-#define TEST_V5(t_netflow_src_ip, t_record, t_record_size, t_checkdata,        \
-						t_checkdata_size, ...) {       \
-	.netflow_src_ip = t_netflow_src_ip,                                    \
-	.record = t_record, .record_size = t_record_size,                      \
-	.checkdata = t_checkdata, .checkdata_size = t_checkdata_size,          \
-	__VA_ARGS__}
+#define TEST_V5(t_netflow_src_ip,                                              \
+		t_record,                                                      \
+		t_record_size,                                                 \
+		t_checkdata,                                                   \
+		t_checkdata_size,                                              \
+		...)                                                           \
+	{                                                                      \
+		.netflow_src_ip = t_netflow_src_ip, .record = t_record,        \
+		.record_size = t_record_size, .checkdata = t_checkdata,        \
+		.checkdata_size = t_checkdata_size, __VA_ARGS__                \
+	}
 
 // Test V9/IPFIX template+flow
-#define TEST(t_netflow_src_ip, t_template, t_template_size,                    \
-	t_record, t_record_size, t_checkdata, t_checkdata_size, ...)           \
-	TEST_V5(t_netflow_src_ip, t_template, t_template_size, NULL, 0,        \
-		__VA_ARGS__),                                                  \
-	TEST_V5(t_netflow_src_ip, t_record, t_record_size,                     \
-		t_checkdata, t_checkdata_size,)                                \
+#define TEST(t_netflow_src_ip,                                                 \
+	     t_template,                                                       \
+	     t_template_size,                                                  \
+	     t_record,                                                         \
+	     t_record_size,                                                    \
+	     t_checkdata,                                                      \
+	     t_checkdata_size,                                                 \
+	     ...)                                                              \
+	TEST_V5(t_netflow_src_ip,                                              \
+		t_template,                                                    \
+		t_template_size,                                               \
+		NULL,                                                          \
+		0,                                                             \
+		__VA_ARGS__)                                                   \
+	, TEST_V5(t_netflow_src_ip,                                            \
+		  t_record,                                                    \
+		  t_record_size,                                               \
+		  t_checkdata,                                                 \
+		  t_checkdata_size, )
 
 static int prepare_tests_v5_ipfix_record(void **state,
-		const struct checkdata *checkdata, size_t checkdata_size,
-		bool normalize) {
+					 const struct checkdata *checkdata,
+					 size_t checkdata_size,
+					 bool normalize) {
 	struct test_params test_params[] = {
-		TEST_V5(0x04030201,
-			&record1, sizeof(record1),
-			checkdata, checkdata_size,
-			.config_json_path = "./tests/0000-testFlowV5.json",
-			.geoip_path = CONFIG_FILE_PATH,
-			.normalize_directions = normalize),
-		TEST(0x04030201, &v10Template, sizeof(v10Template),
-			&v10Flow, sizeof(v10Flow),
-			checkdata, checkdata_size,),
+			TEST_V5(0x04030201,
+				&record1,
+				sizeof(record1),
+				checkdata,
+				checkdata_size,
+				.config_json_path =
+						"./tests/0000-testFlowV5.json",
+				.geoip_path = CONFIG_FILE_PATH,
+				.normalize_directions = normalize),
+			TEST(0x04030201,
+			     &v10Template,
+			     sizeof(v10Template),
+			     &v10Flow,
+			     sizeof(v10Flow),
+			     checkdata,
+			     checkdata_size, ),
 	};
 
 	*state = prepare_tests(test_params, RD_ARRAYSIZE(test_params));
 	return *state == NULL;
 }
 
-#define CHECKDATA_IP_COUNTRY_AS(t_key, ip, country_code, as, as_name) \
-	{.key= t_key, .value=ip},                                     \
-	{.key= t_key "_country_code", .value = country_code},         \
-	/* @TODO recover {.key="src_as", .value = as}, */             \
-	{.key= t_key "_as_name", .value = as_name}
+#define CHECKDATA_IP_COUNTRY_AS(t_key, ip, country_code, as, as_name)          \
+	{                                                                      \
+			.key = t_key, .value = ip,                             \
+	},                                                                     \
+			{                                                      \
+					.key = t_key "_country_code",          \
+					.value = country_code,                 \
+			}, /* @TODO recover                                    \
+				{.key="src_as", .value =                       \
+				as}, */                                        \
+	{                                                                      \
+		.key = t_key "_as_name", .value = as_name,                     \
+	}
 
 // Checkdata for flow 1 at src/lan
-#define CHECKDATA_1_LEFT(name) \
+#define CHECKDATA_1_LEFT(name)                                                 \
 	CHECKDATA_IP_COUNTRY_AS(name, "192.168.1.1", NULL, NULL, NULL)
-#define CHECKDATA_1_RIGHT(name) \
+#define CHECKDATA_1_RIGHT(name)                                                \
 	CHECKDATA_IP_COUNTRY_AS(name, "192.168.1.2", NULL, NULL, NULL)
 
-#define CHECKDATA_2_LEFT(name) \
+#define CHECKDATA_2_LEFT(name)                                                 \
 	CHECKDATA_IP_COUNTRY_AS(name, "8.8.8.8", "US", "15169", "Google Inc.")
-#define CHECKDATA_2_RIGHT(name) \
+#define CHECKDATA_2_RIGHT(name)                                                \
 	CHECKDATA_IP_COUNTRY_AS(name, "192.168.1.2", NULL, NULL, NULL)
 
-#define CHECKDATA_3_LEFT(name) \
+#define CHECKDATA_3_LEFT(name)                                                 \
 	CHECKDATA_IP_COUNTRY_AS(name, "192.168.1.2", NULL, NULL, NULL)
-#define CHECKDATA_3_RIGHT(name) \
-	CHECKDATA_IP_COUNTRY_AS(name, "83.56.40.199", "ES", "3352", \
-			"Telefonica De Espana")
+#define CHECKDATA_3_RIGHT(name)                                                \
+	CHECKDATA_IP_COUNTRY_AS(name,                                          \
+				"83.56.40.199",                                \
+				"ES",                                          \
+				"3352",                                        \
+				"Telefonica De Espana")
 
 static int prepare_test_v5_ipfix_geoip(void **state) {
 	static const struct checkdata_value checkdata_values1[] = {
-		CHECKDATA_1_LEFT("src"), CHECKDATA_1_RIGHT("dst"),
+			CHECKDATA_1_LEFT("src"), CHECKDATA_1_RIGHT("dst"),
 	};
 
 	static const struct checkdata_value checkdata_values2[] = {
-		CHECKDATA_2_LEFT("src"), CHECKDATA_2_RIGHT("dst"),
+			CHECKDATA_2_LEFT("src"), CHECKDATA_2_RIGHT("dst"),
 	};
 
 	static const struct checkdata_value checkdata_values3[] = {
-		CHECKDATA_3_LEFT("src"), CHECKDATA_3_RIGHT("dst"),
+			CHECKDATA_3_LEFT("src"), CHECKDATA_3_RIGHT("dst"),
 	};
 
 	static const struct checkdata checkdata[] = {
-		{.size=RD_ARRAYSIZE(checkdata_values1), checkdata_values1},
-		{.size=RD_ARRAYSIZE(checkdata_values2), checkdata_values2},
-		{.size=RD_ARRAYSIZE(checkdata_values3), checkdata_values3},
+			{.size = RD_ARRAYSIZE(checkdata_values1),
+			 checkdata_values1},
+			{.size = RD_ARRAYSIZE(checkdata_values2),
+			 checkdata_values2},
+			{.size = RD_ARRAYSIZE(checkdata_values3),
+			 checkdata_values3},
 	};
 
-	return prepare_tests_v5_ipfix_record(state, checkdata,
-		RD_ARRAYSIZE(checkdata), false);
+	return prepare_tests_v5_ipfix_record(
+			state, checkdata, RD_ARRAYSIZE(checkdata), false);
 }
 
 /*
  * TEST2: WLC NF9 data -> already normalized
  */
 
-#define TEST_V9_FLOW_HEADER \
-	.sys_uptime = constexpr_be32toh(12345), \
-	.unix_secs = constexpr_be32toh(1382364130), \
-	.flow_sequence = constexpr_be32toh(1080), \
+#define TEST_V9_FLOW_HEADER                                                    \
+	.sys_uptime = constexpr_be32toh(12345),                                \
+	.unix_secs = constexpr_be32toh(1382364130),                            \
+	.flow_sequence = constexpr_be32toh(1080),                              \
 	.source_id = constexpr_be32toh(1),
 
 #define TEST_V9_TEMPLATE_ID 259
 
-#define T_WLAN_SSID \
-	'l','o','c','a','l','-','w','i', \
-	'f','i',0,  0,  0,  0,  0,  0,   \
-	0,  0,  0,  0,  0,  0,  0,  0,   \
-	0,  0,  0,  0,  0,  0,  0,  0,   \
-	0
+#define T_WLAN_SSID                                                            \
+	'l', 'o', 'c', 'a', 'l', '-', 'w', 'i', 'f', 'i', 0, 0, 0, 0, 0, 0, 0, \
+			0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
 
-#define TEST_NF9_BASE_ENTITIES(X, STA_IP_1, STA_IP_2, STA_IP_3, STA_IP_4) \
-	X(STA_MAC_ADDRESS, 6, 0, 0x00, 0x05, 0x69, 0x28, 0xb0, 0xc7) \
-	X(STA_IPV4_ADDRESS, 4, 0, STA_IP_1, STA_IP_2, STA_IP_3, STA_IP_4) \
-	X(APPLICATION_ID, 4, 0, FLOW_APPLICATION_ID(13, 453)) \
-	X(WLAN_SSID, 33, 0, T_WLAN_SSID) \
-	X(DIRECTION, 1, 0, 0) \
-	X(IN_BYTES, 8, 0, UINT64_TO_UINT8_ARR(7603)) \
-	X(IN_PKTS, 8, 0,  UINT64_TO_UINT8_ARR(263)) \
-	X(98, 1, 0, 0) \
-	X(195, 1, 0, 0) \
-	X(WAP_MAC_ADDRESS, 6, 0, 0x58, 0xbf, 0xea, 0x01, 0x5b, 0x40) \
+#define TEST_NF9_BASE_ENTITIES(X, STA_IP_1, STA_IP_2, STA_IP_3, STA_IP_4)      \
+	X(STA_MAC_ADDRESS, 6, 0, 0x00, 0x05, 0x69, 0x28, 0xb0, 0xc7)           \
+	X(STA_IPV4_ADDRESS, 4, 0, STA_IP_1, STA_IP_2, STA_IP_3, STA_IP_4)      \
+	X(APPLICATION_ID, 4, 0, FLOW_APPLICATION_ID(13, 453))                  \
+	X(WLAN_SSID, 33, 0, T_WLAN_SSID)                                       \
+	X(DIRECTION, 1, 0, 0)                                                  \
+	X(IN_BYTES, 8, 0, UINT64_TO_UINT8_ARR(7603))                           \
+	X(IN_PKTS, 8, 0, UINT64_TO_UINT8_ARR(263))                             \
+	X(98, 1, 0, 0)                                                         \
+	X(195, 1, 0, 0)                                                        \
+	X(WAP_MAC_ADDRESS, 6, 0, 0x58, 0xbf, 0xea, 0x01, 0x5b, 0x40)
 
-#define TEST_NF9_ENTITIES(RT, R) \
-	TEST_NF9_BASE_ENTITIES(RT, 192, 168, 1, 1) \
-	TEST_NF9_BASE_ENTITIES(R, 8, 8, 8, 8) \
+#define TEST_NF9_ENTITIES(RT, R)                                               \
+	TEST_NF9_BASE_ENTITIES(RT, 192, 168, 1, 1)                             \
+	TEST_NF9_BASE_ENTITIES(R, 8, 8, 8, 8)                                  \
 	TEST_NF9_BASE_ENTITIES(R, 192, 168, 1, 2)
 
 // THIS V9 flows are always direction-normalized
 static int prepare_tests_v9(void **state, bool normalize_directions) {
-	static const NF9_TEMPLATE(v9Template, TEST_V9_FLOW_HEADER,
-		TEST_V9_TEMPLATE_ID, TEST_NF9_ENTITIES);
+	static const NF9_TEMPLATE(v9Template,
+				  TEST_V9_FLOW_HEADER,
+				  TEST_V9_TEMPLATE_ID,
+				  TEST_NF9_ENTITIES);
 
-	static const NF9_FLOW(v9Flow, TEST_V9_FLOW_HEADER,
-		TEST_V9_TEMPLATE_ID, TEST_NF9_ENTITIES);
+	static const NF9_FLOW(v9Flow,
+			      TEST_V9_FLOW_HEADER,
+			      TEST_V9_TEMPLATE_ID,
+			      TEST_NF9_ENTITIES);
 
 	static const struct checkdata_value checkdata_values1[] = {
-		CHECKDATA_1_LEFT("lan_ip"),
+			CHECKDATA_1_LEFT("lan_ip"),
 	};
 
 	static const struct checkdata_value checkdata_values2[] = {
-		CHECKDATA_2_LEFT("lan_ip")
-	};
+			CHECKDATA_2_LEFT("lan_ip")};
 
 	static const struct checkdata_value checkdata_values3[] = {
-		CHECKDATA_3_LEFT("lan_ip"),
+			CHECKDATA_3_LEFT("lan_ip"),
 	};
 
 	static const struct checkdata checkdata[] = {
-		{.size=RD_ARRAYSIZE(checkdata_values1), checkdata_values1},
-		{.size=RD_ARRAYSIZE(checkdata_values2), checkdata_values2},
-		{.size=RD_ARRAYSIZE(checkdata_values3), checkdata_values3},
+			{.size = RD_ARRAYSIZE(checkdata_values1),
+			 checkdata_values1},
+			{.size = RD_ARRAYSIZE(checkdata_values2),
+			 checkdata_values2},
+			{.size = RD_ARRAYSIZE(checkdata_values3),
+			 checkdata_values3},
 	};
 
 	struct test_params test_params[] = {
-		TEST(0x04030201, &v9Template, sizeof(v9Template),
-			&v9Flow, sizeof(v9Flow),
-			checkdata, RD_ARRAYSIZE(checkdata),
-			.config_json_path = "./tests/0000-testFlowV5.json",
-			.geoip_path = CONFIG_FILE_PATH,
-			.normalize_directions = normalize_directions),
+			TEST(0x04030201,
+			     &v9Template,
+			     sizeof(v9Template),
+			     &v9Flow,
+			     sizeof(v9Flow),
+			     checkdata,
+			     RD_ARRAYSIZE(checkdata),
+			     .config_json_path = "./tests/0000-testFlowV5.json",
+			     .geoip_path = CONFIG_FILE_PATH,
+			     .normalize_directions = normalize_directions),
 	};
 
 	*state = prepare_tests(test_params, RD_ARRAYSIZE(test_params));
@@ -343,42 +437,50 @@ static int prepare_test_v9_normalized(void **state) {
 
 static int prepare_test_v5_ipfix_normalized(void **state) {
 	static const struct checkdata_value checkdata_values1[] = {
-		CHECKDATA_1_LEFT("lan_ip"), CHECKDATA_1_RIGHT("wan_ip"),
+			CHECKDATA_1_LEFT("lan_ip"), CHECKDATA_1_RIGHT("wan_ip"),
 	};
 
 	static const struct checkdata_value checkdata_values2[] = {
-		CHECKDATA_2_LEFT("lan_ip"), CHECKDATA_2_RIGHT("wan_ip"),
+			CHECKDATA_2_LEFT("lan_ip"), CHECKDATA_2_RIGHT("wan_ip"),
 	};
 
 	static const struct checkdata_value checkdata_values3[] = {
-		CHECKDATA_3_LEFT("lan_ip"), CHECKDATA_3_RIGHT("wan_ip"),
+			CHECKDATA_3_LEFT("lan_ip"), CHECKDATA_3_RIGHT("wan_ip"),
 	};
 
 	static const struct checkdata checkdata[] = {
-		{.size=RD_ARRAYSIZE(checkdata_values1), checkdata_values1},
-		{.size=RD_ARRAYSIZE(checkdata_values2), checkdata_values2},
-		{.size=RD_ARRAYSIZE(checkdata_values3), checkdata_values3},
+			{.size = RD_ARRAYSIZE(checkdata_values1),
+			 checkdata_values1},
+			{.size = RD_ARRAYSIZE(checkdata_values2),
+			 checkdata_values2},
+			{.size = RD_ARRAYSIZE(checkdata_values3),
+			 checkdata_values3},
 	};
 
-	return prepare_tests_v5_ipfix_record(state, checkdata,
-		RD_ARRAYSIZE(checkdata), true);
+	return prepare_tests_v5_ipfix_record(
+			state, checkdata, RD_ARRAYSIZE(checkdata), true);
 }
 
 #else /* HAVE_GEOIP */
-static void skip_test() { skip(); }
+static void skip_test() {
+	skip();
+}
 #endif
 
 int main() {
-	const struct CMUnitTest tests[] = {
+	static const struct CMUnitTest tests[] = {
 #ifdef HAVE_GEOIP
-		cmocka_unit_test_setup(testFlow, prepare_test_v5_ipfix_geoip),
-		cmocka_unit_test_setup(testFlow,
-			prepare_test_v5_ipfix_normalized),
-		cmocka_unit_test_setup(testFlow,
-			prepare_test_v9_dont_normalize),
-		cmocka_unit_test_setup(testFlow, prepare_test_v9_normalized),
+			cmocka_unit_test_setup(testFlow,
+					       prepare_test_v5_ipfix_geoip),
+			cmocka_unit_test_setup(
+					testFlow,
+					prepare_test_v5_ipfix_normalized),
+			cmocka_unit_test_setup(testFlow,
+					       prepare_test_v9_dont_normalize),
+			cmocka_unit_test_setup(testFlow,
+					       prepare_test_v9_normalized),
 #else
-		cmocka_unit_test(skip_test),
+			cmocka_unit_test(skip_test),
 #endif
 	};
 

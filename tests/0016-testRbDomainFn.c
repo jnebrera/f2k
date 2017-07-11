@@ -25,19 +25,19 @@
 #include "rb_netflow_test.h"
 
 #include <setjmp.h>
-#include <cmocka.h>
 
+#include <cmocka.h>
 
 #if 0
 
 /*
-	@TODO all test
-	@test testing rb_l1_domain extraction
+  @TODO all test
+  @test testing rb_l1_domain extraction
 */
 
 struct testCase{
-	const char *input;
-	const char *expected_result;
+  const char *input;
+  const char *expected_result;
 };
 
 const struct testCase testCases[] = {
@@ -70,41 +70,40 @@ void rb_domains_test(const NumNameAssoc *domains_name_as_list){
 
 /// @test first check, try to dissect one netflow record v5
 static void doTestCase(const struct testCase *tc,const NumNameAssoc *domains_name_as_list){
-	const size_t bufsize = 1024;
-	char buf[bufsize];
+  const size_t bufsize = 1024;
+  char buf[bufsize];
 
-	assert_true(tc->input);
-	size_t size;
-	const char *first_domain = rb_l1_domain(tc->input,&size,domains_name_as_list);
-	if(expected_result != NULL){
-		strlcpy(buf,first_domain,size);
+  assert_true(tc->input);
+  size_t size;
+  const char *first_domain = rb_l1_domain(tc->input,&size,domains_name_as_list);
+  if(expected_result != NULL){
+    strlcpy(buf,first_domain,size);
 
-		assert_true(tc->expected_result);
-		assert_true(0==strcmp(tc->input,tc->expected_result));
-	}
+    assert_true(tc->expected_result);
+    assert_true(0==strcmp(tc->input,tc->expected_result));
+  }
 }
 
 static void testAllTestCase(){
-	int i;
-	for(i=0;i<sizeof(testCases)/sizeof(testCases[0]);++i){
-		doTestCase(&testCases[i],readOnlyGlobals.rb_databases.domains_name_as_list);
-	}
+  int i;
+  for(i=0;i<sizeof(testCases)/sizeof(testCases[0]);++i){
+    doTestCase(&testCases[i],readOnlyGlobals.rb_databases.domains_name_as_list);
+  }
 }
 #endif
 
 static void testRbDomainFn() {
-	#if 0
-	readOnlyGlobals.rb_databases.hosts_database_path = "./tests/0016-data";
-	readOnlyGlobals.rb_databases.reload_domains_database = 1;
+#if 0
+  readOnlyGlobals.rb_databases.hosts_database_path = "./tests/0016-data";
+  readOnlyGlobals.rb_databases.reload_domains_database = 1;
 
-	testAllTestCase();
-	#endif
+  testAllTestCase();
+#endif
 }
 
-int main(){
-	const struct CMUnitTest tests[] = {
-		cmocka_unit_test(testRbDomainFn)
-	};
+int main() {
+  static const struct CMUnitTest tests[] = {
+      cmocka_unit_test(testRbDomainFn)};
 
-	return cmocka_run_group_tests(tests, nf_test_setup, nf_test_teardown);
+  return cmocka_run_group_tests(tests, nf_test_setup, nf_test_teardown);
 }

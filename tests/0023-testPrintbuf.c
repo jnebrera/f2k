@@ -24,17 +24,18 @@
 #include <stdio.h>
 
 #include <setjmp.h>
+
 #include <cmocka.h>
 
-static void checkSecuence(struct printbuf *p) {
+static void checkSecuence(const struct printbuf *p) {
 	size_t i;
-	for(i=0; i<p->bpos-1; ++i) {
-		if(p->buf[i] == 'Z'){
+	for (i = 0; i < p->bpos - 1; ++i) {
+		if (p->buf[i] == 'Z') {
 			// printf("Checking %c == %c\n",p->buf[i+1],'A');
-			assert_true(p->buf[i+1] == 'A');
+			assert_true(p->buf[i + 1] == 'A');
 		} else {
-			// printf("Checking %c == %c\n",p->buf[i+1],p->buf[i]+1);
-			assert_true(p->buf[i+1] == p->buf[i]+1);
+			// printf("Checking %c==%c\n",p->buf[i+1],p->buf[i]+1);
+			assert_true(p->buf[i + 1] == p->buf[i] + 1);
 		}
 	}
 }
@@ -44,25 +45,23 @@ static void testExtend() {
 	struct printbuf *p = printbuf_new();
 	const size_t initial_size = p->size;
 
-	for(i=0;i<initial_size+4;++i) {
+	for (i = 0; i < initial_size + 4; ++i) {
 		/*
 		Trying to append more characters that initial size,
 		printbuf should extend
 		*/
-		const char to_add = (i)%('Z'-'A'+1) + 'A'; /* ABCDEF... */
+		const char to_add = (i) % ('Z' - 'A' + 1) + 'A'; /* ABCDEF... */
 		printbuf_memappend_fast(p, &to_add, 1);
 	}
 
 	assert_true(p->size > initial_size);
 	checkSecuence(p);
-	//printf("%s\n",p->buf);
+	// printf("%s\n",p->buf);
 	printbuf_free(p);
 }
 
-int main(){
-	const struct CMUnitTest tests[] = {
-		cmocka_unit_test(testExtend)
-	};
+int main() {
+	static const struct CMUnitTest tests[] = {cmocka_unit_test(testExtend)};
 
 	return cmocka_run_group_tests(tests, NULL, NULL);
 }

@@ -1,16 +1,10 @@
 machine:
   services:
     - docker
-  hosts:
-    kafka: 127.0.0.1
 
 
 checkout:
   post:
-    # This test is not interesting anymore
-    - rm -f tests/0019-testTemplateSaveCollect.c
-    # These tests fail sometimes. We need to figure out why
-    - rm -f tests/{0051-kafka_consumer,0047-testNetflow9_dns}.c
     # Don't want thread-safety test because musl bug
     - sed -i 's%\$(TESTS_\(DRD\|HELGRIND\)_XML)%%g;s%run_tests, -cvdh%run_tests, -cv%' Makefile
 

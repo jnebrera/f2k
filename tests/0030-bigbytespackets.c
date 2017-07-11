@@ -23,175 +23,109 @@
 #include "rb_netflow_test.h"
 
 #include <setjmp.h>
+
 #include <cmocka.h>
 
-struct TestV10Template{
-	IPFIXFlowHeader flowHeader;
-	IPFIXSet flowSetHeader;
-	V9TemplateDef templateHeader; /* It's the same */
-	const uint8_t templateBuffer[92];
-};
+#define TEST_TEMPLATE_ID 269
+#define TEST_IPFIX_HEADER                                                      \
+	.unix_secs = constexpr_be32toh(1382637021),                            \
+	.flow_sequence = constexpr_be32toh(1080),                              \
+	.observation_id = constexpr_be32toh(1),
 
-struct TestV10Flow{
-	IPFIXFlowHeader flowHeader;
-	IPFIXSet flowSetHeader;
-	const uint8_t buffer1[81];
-}__attribute__((packed));
+#define CISCO_HTTP_EMPTY(t_type) 0x06, 0x03, 0x00, 0x00, 0x50, 0x34, t_type
+#define IPFIX_ENTITIES_BASE(X, t_bytes, t_pkts)                                \
+	X(IPV4_SRC_ADDR, 4, 0, 10, 13, 122, 44)                                \
+	X(IPV4_DST_ADDR, 4, 0, 66, 220, 152, 19)                               \
+	X(IP_PROTOCOL_VERSION, 1, 0, 4)                                        \
+	X(PROTOCOL, 1, 0, 6)                                                   \
+	X(L4_SRC_PORT, 2, 0, UINT16_TO_UINT8_ARR(54713))                       \
+	X(L4_DST_PORT, 2, 0, UINT16_TO_UINT8_ARR(443))                         \
+	X(FLOW_END_REASON, 1, 0, 3)                                            \
+	X(BIFLOW_DIRECTION, 1, 0, 1)                                           \
+	X(FLOW_SAMPLER_ID, 1, 0, 0)                                            \
+	X(TRANSACTION_ID, 8, 0, UINT64_TO_UINT8_ARR(645773089145098240))       \
+	X(APPLICATION_ID, 4, 0, FLOW_APPLICATION_ID(13, 453))                  \
+	X(CISCO_URL, 0xffff, 9, CISCO_HTTP_EMPTY(1))                           \
+	X(CISCO_URL, 0xffff, 9, CISCO_HTTP_EMPTY(2))                           \
+	X(CISCO_URL, 0xffff, 9, CISCO_HTTP_EMPTY(3))                           \
+	X(CISCO_URL, 0xffff, 9, CISCO_HTTP_EMPTY(4))                           \
+	X(IN_BYTES, 8, 0, UINT64_TO_UINT8_ARR(t_bytes))                        \
+	X(IN_PKTS, 8, 0, UINT64_TO_UINT8_ARR(t_pkts))                          \
+	X(FIRST_SWITCHED, 4, 0, UINT32_TO_UINT8_ARR(1373263))                  \
+	X(LAST_SWITCHED, 4, 0, UINT32_TO_UINT8_ARR(1441796))
 
-static const struct TestV10Template v10Template = {
-	.flowHeader = {
-		/*uint16_t*/ .version = 0x0a00,           /* Current version=9*/
-		/*uint16_t*/ .len = 0x7400,           /* The number of records in PDU. */
-		/*uint32_t*/ .unix_secs = 0xdd5d6952,     /* Current time in msecs since router booted */
-		/*uint32_t*/ .flow_sequence = 0x38040000, /* Sequence number of total flows seen */
-		/*uint32_t*/ .observation_id = 0x00010000,      /* Source id */
-	},
-
-	.flowSetHeader = {
-		/*uint16_t*/ .set_id = 0x0200,
-		/*uint16_t*/ .set_len = 0x6400,
-	},
-
-	.templateHeader = {
-		/*uint16_t*/ .templateId = 0x0d01, /*269*/
-		/*uint16_t*/ .fieldCount = 0x1300,
-	},
-
-	.templateBuffer = {
-		0x00, 0x08, 0x00, 0x04, /* SRC ADDR */
-		0x00, 0x0c, 0x00, 0x04, /* DST ADDR */
-		0x00, 0x3c, 0x00, 0x01, /* IP VERSION */
-		0x00, 0x04, 0x00, 0x01, /* PROTO */
-		0x00, 0x07, 0x00, 0x02, /* SRC PORT */
-		0x00, 0x0b, 0x00, 0x02, /* DST PORT */
-		0x00, 0x88, 0x00, 0x01, /* flowEndreason */
-		0x00, 0xef, 0x00, 0x01, /* biflowDirection */
-		0x00, 0x30, 0x00, 0x01, /* FLOW_SAMPLER_ID */
-		0x01, 0x18, 0x00, 0x08, /* TRANSACTION_ID */
-		0x00, 0x5f, 0x00, 0x04, /* APPLICATION ID*/
-		0xaf, 0xcb, 0xff, 0xff, 0x00, 0x00, 0x00, 0x09, /* CISCO_URL, variable length */
-		0xaf, 0xcb, 0xff, 0xff, 0x00, 0x00, 0x00, 0x09, /* CISCO_URL, variable length */
-		0xaf, 0xcb, 0xff, 0xff, 0x00, 0x00, 0x00, 0x09, /* CISCO_URL, variable length */
-		0xaf, 0xcb, 0xff, 0xff, 0x00, 0x00, 0x00, 0x09, /* CISCO_URL, variable length */
-		0x00, 0x01, 0x00, 0x08, /* BYTES: */
-		0x00, 0x02, 0x00, 0x08, /* PKTS*/
-		0x00, 0x16, 0x00, 0x04, /* FIRST_SWITCHED */
-		0x00, 0x15, 0x00, 0x04, /* LAST_SWITCHED*/
+// clang-format off
+#define CHECKDATA_BASE(bytes, pkts)                                            \
+	{                                                                      \
+		{.key = "type", .value = "netflowv10"},                        \
+		{.key = "src", .value = "10.13.122.44"},                       \
+		{.key = "dst", .value = "66.220.152.19"},                      \
+		{.key = "ip_protocol_version", .value = "4"},                  \
+		{.key = "l4_proto", .value = "6"},                             \
+		{.key = "src_port", .value = "54713"},                         \
+		{.key = "dst_port", .value = "443"},                           \
+		{.key = "flow_end_reason", .value = "end of flow"},            \
+		{.key = "biflow_direction", .value = "initiator"},             \
+		{.key = "application_id", .value = NULL},                      \
+		{.key = "sensor_ip", .value = "4.3.2.1"},                      \
+		{.key = "sensor_name", .value = "FlowTest"},                   \
+		{.key = "bytes", .value = bytes},                              \
+		{.key = "pkts", .value = pkts},                                \
+		{.key = "first_switched", .value = "1382636953"},              \
+		{.key = "timestamp", .value = "1382637021"},                   \
 	}
-};
+// clang-format on
 
-#define V10_FLOW_BASIC(b0,b1,b2,b3,b4,b5,b6,b7,p0,p1,p2,p3,p4,p5,p6,p7) { \
-	.flowHeader = { \
-		/*uint16_t*/ .version = 0x0a00,           /* Current version=9*/ \
-		/*uint16_t*/ .len = 0x6500,           /* The number of records in PDU. */ \
-		/*uint32_t*/ .unix_secs = 0xdd5d6952,     /* Current time in msecs since router booted */ \
-		/*uint32_t*/ .flow_sequence = 0x38040000, /* Sequence number of total flows seen */ \
-		/*uint32_t*/ .observation_id = 0x00010000,      /* Source id */ \
-	}, \
- \
-	.flowSetHeader = { \
-		/*uint16_t*/ .set_id = 0x0d01, \
-		/*uint16_t*/ .set_len = 0x5500, \
-	}, \
- \
-	.buffer1 = { \
-		0x0a, 0x0d, 0x7a, 0x2c, /* SRC ADDR 10.13.122.44 */ \
-		0x42, 0xdc, 0x98, 0x13, /* DST ADDR 66.220.152.19*/ \
-		0x04,                   /* IP VERSION: 4 */ \
-		0x06,                   /* PROTO: 6 */ \
-		0xd5, 0xb9,             /* SRC PORT: 54713 */ \
-		0x01, 0xbb,             /* DST PORT: 443 */ \
-		0x03,                   /* flowEndreason */ \
-		0x01,                   /* biflowDirection */ \
-		0x00,                   /* FLOW_SAMPLER_ID */ \
-		0x8f, 0x63, 0xf3, 0x40, 0x00, 0x01, 0x00, 0x00, /* TRANSACTION_ID */ \
-		0x0d, 0x00, 0x01, 0xc5, /* APPLICATION ID 13:453 */ \
-		0x06, 0x03, 0x00, 0x00, 0x50, 0x34, 0x01, /* CISCO_URL */ \
-		0x06, 0x03, 0x00, 0x00, 0x50, 0x34, 0x02, /* CISCO_URL */ \
-		0x06, 0x03, 0x00, 0x00, 0x50, 0x34, 0x03, /* CISCO_URL */ \
-		0x06, 0x03, 0x00, 0x00, 0x50, 0x34, 0x04, /* CISCO_URL */ \
-		b0, b1, b2, b3, b4, b5, b6, b7, /* BYTES */ \
-		p0, p1, p2, p3, p4, p5, p6, p7, /* PKTS */ \
-		0x0f, 0xed, 0x0a, 0xc0, /* FIRST_SWITCHED:  */ \
-		0x0f, 0xee, 0x18, 0x00, /* LAST_SWITCHED: */ \
-	}\
-}
+#define TEST_ENTITIES(RT, R)                                                   \
+	IPFIX_ENTITIES_BASE(RT, 68719476736, 31)                               \
+	IPFIX_ENTITIES_BASE(R, 31, 68719476736)                                \
+	IPFIX_ENTITIES_BASE(R, 68719476767, 68719476736)
 
-#define CHECKDATA_BASE(bytes,pkts) { \
-	{.key = "type", .value="netflowv10"}, \
-	{.key = "src", .value="10.13.122.44"}, \
-	{.key = "dst", .value="66.220.152.19"}, \
-	{.key = "ip_protocol_version", .value="4"}, \
-	{.key = "l4_proto", .value="6"}, \
-	{.key = "src_port", .value="54713"}, \
-	{.key = "dst_port", .value="443"}, \
-	{.key = "flow_end_reason", .value="end of flow"}, \
-	{.key = "biflow_direction", .value="initiator"}, \
-	{.key = "application_id", .value=NULL}, \
-	\
-	{.key = "sensor_ip", .value="4.3.2.1"}, \
-	{.key = "sensor_name", .value="FlowTest"}, \
-	{.key = "bytes", .value=bytes}, \
-	{.key = "pkts", .value=pkts}, \
-	{.key = "first_switched", .value="1382636953"}, \
-	{.key = "timestamp", .value="1382637021"}, \
-}
-
-
-static const struct TestV10Flow v10Flow_bt32bitsbytes = V10_FLOW_BASIC(
-	0x00, 0x00, 0x00, 0x10, 0x00, 0x00, 0x00, 0x00,
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x1f);
-
-static const struct TestV10Flow v10Flow_bt32bitspkts = V10_FLOW_BASIC(
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x1f,
-	0x00, 0x00, 0x00, 0x10, 0x00, 0x00, 0x00, 0x00);
-
-static const struct TestV10Flow v10Flow_bt32bitsbytespkts = V10_FLOW_BASIC(
-	0x00, 0x00, 0x00, 0x10, 0x00, 0x00, 0x00, 0x1f,
-	0x00, 0x00, 0x00, 0x10, 0x00, 0x00, 0x00, 0x00);
+static const IPFIX_TEMPLATE(v10Template,
+			    TEST_IPFIX_HEADER,
+			    TEST_TEMPLATE_ID,
+			    TEST_ENTITIES);
+static const IPFIX_FLOW(v10Flow,
+			TEST_IPFIX_HEADER,
+			TEST_TEMPLATE_ID,
+			TEST_ENTITIES);
 
 /// Bigger than 32 bits bytes/packets
 static int prepare_test_big_bytes(void **state) {
 	static const struct checkdata_value checkdata_values_bytes[] =
-					CHECKDATA_BASE("68719476736","31");
-	static const struct checkdata checkdata_bytes = {
-		.checks=checkdata_values_bytes,
-		.size = RD_ARRAYSIZE(checkdata_values_bytes),
-	};
+			CHECKDATA_BASE("68719476736", "31");
 
 	static const struct checkdata_value checkdata_values_pkts[] =
-					CHECKDATA_BASE("31","68719476736");
-	static const struct checkdata checkdata_pkts = {
-		.checks=checkdata_values_pkts,
-		.size = RD_ARRAYSIZE(checkdata_values_pkts),
-	};
+			CHECKDATA_BASE("31", "68719476736");
 
 	static const struct checkdata_value checkdata_values_bytespkts[] =
-					CHECKDATA_BASE("68719476767","68719476736");
-	static const struct checkdata checkdata_bytespkts = {
-		.checks=checkdata_values_bytespkts,
-		.size = RD_ARRAYSIZE(checkdata_values_bytespkts),
+			CHECKDATA_BASE("68719476767", "68719476736");
+#define CHECKS(X)                                                              \
+	{ .checks = X, .size = sizeof(X) / sizeof(X[0]) }
+	static const struct checkdata checkdata[] = {
+			CHECKS(checkdata_values_bytes),
+			CHECKS(checkdata_values_pkts),
+			CHECKS(checkdata_values_bytespkts),
 	};
 
-#define TEST(config_path, mrecord, mrecord_size, checks, checks_sz) {          \
-		.config_json_path = config_path,                               \
-		.netflow_src_ip = 0x04030201,                                  \
+#define TEST(config_path, mrecord, mrecord_size, checks, checks_sz)            \
+	{                                                                      \
+		.config_json_path = config_path, .netflow_src_ip = 0x04030201, \
 		.record = mrecord, .record_size = mrecord_size,                \
 		.checkdata = checks, .checkdata_size = checks_sz               \
 	}
 
-	struct test_params test_params[] = {
-		TEST("./tests/0000-testFlowV5.json",
-			&v10Template, sizeof(v10Template), NULL, 0),
-		TEST(NULL, &v10Flow_bt32bitsbytes,
-						sizeof(v10Flow_bt32bitsbytes),
-						&checkdata_bytes, 1),
-		TEST(NULL, &v10Flow_bt32bitspkts,
-						sizeof(v10Flow_bt32bitspkts),
-						&checkdata_pkts, 1),
-		TEST(NULL, &v10Flow_bt32bitsbytespkts,
-						sizeof(checkdata_values_bytespkts),
-						&checkdata_bytespkts, 1)
+	static const struct test_params test_params[] = {
+			TEST("./tests/0000-testFlowV5.json",
+			     &v10Template,
+			     sizeof(v10Template),
+			     NULL,
+			     0),
+			TEST(NULL,
+			     &v10Flow,
+			     sizeof(v10Flow),
+			     checkdata,
+			     RD_ARRAYSIZE(checkdata)),
 	};
 
 	*state = prepare_tests(test_params, RD_ARRAYSIZE(test_params));
@@ -199,8 +133,9 @@ static int prepare_test_big_bytes(void **state) {
 }
 
 int main() {
-	const struct CMUnitTest tests[] = {
-		cmocka_unit_test_setup(testFlow, prepare_test_big_bytes),
+	static const const struct CMUnitTest tests[] = {
+			cmocka_unit_test_setup(testFlow,
+					       prepare_test_big_bytes),
 	};
 
 	return cmocka_run_group_tests(tests, nf_test_setup, nf_test_teardown);

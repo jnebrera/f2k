@@ -1,7 +1,7 @@
 
 #include "f2k.h"
-#include "util.c"
 #include "rb_lists.c"
+#include "util.c"
 
 #if 0
 /* TODO */
@@ -173,14 +173,13 @@ static void testSaveTemplateInDatabase()
 
 #endif
 
-static void testSaveAndLoadTemplate()
-{
-  // testSaveTemplateInDatabase();
-  // testSaveAndLoadTemplate_loadFromInvalidFile();
-  // testSaveAndLoadTemplate_fullOKtest();
+static void testSaveAndLoadTemplate() {
+	// testSaveTemplateInDatabase();
+	// testSaveAndLoadTemplate_loadFromInvalidFile();
+	// testSaveAndLoadTemplate_fullOKtest();
 }
 
-int main(void){
+int main(void) {
 	testSaveAndLoadTemplate();
 	return 0;
 }

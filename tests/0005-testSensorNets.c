@@ -23,8 +23,10 @@
 #include "rb_netflow_test.h"
 
 #include <setjmp.h>
+
 #include <cmocka.h>
 
+// clang-format off
 static const NetFlow5Record record1 = {
 	.flowHeader = {
 		.version = 0x0500,     /* Current version=5*/
@@ -65,41 +67,43 @@ static const NetFlow5Record record1 = {
 		},
 	}
 };
+// clang-format on
 
 /** @test checks that different actions are applied if the flow comes to one or
     another defined sensor
     */
 static int prepare_test_sensor_net(void **state) {
 	static const struct checkdata_value checkdata_type = {
-		.key = "type", .value="netflowv5",
+			.key = "type", .value = "netflowv5",
 	};
 
 	static const struct checkdata check_flow = {
-		.size = 1, .checks = &checkdata_type,
+			.size = 1, .checks = &checkdata_type,
 	};
 
-#define TEST(mnetflow_src_ip, mcheckdata, mcheckdata_size, ...) {              \
-		.netflow_src_ip = mnetflow_src_ip,                             \
-		.record = &record1,                                            \
-		.record_size = sizeof(record1),                                \
-		.checkdata = mcheckdata,                                       \
-		.checkdata_size = mcheckdata_size,                             \
-		__VA_ARGS__                                                    \
+#define TEST(mnetflow_src_ip, mcheckdata, mcheckdata_size, ...)                \
+	{                                                                      \
+		.netflow_src_ip = mnetflow_src_ip, .record = &record1,         \
+		.record_size = sizeof(record1), .checkdata = mcheckdata,       \
+		.checkdata_size = mcheckdata_size, __VA_ARGS__                 \
 	}
 
-	struct test_params test_params[] = {
-		/* Testing: Flow inside a net /24 */
-		                               \
+	// clang-format off
+
+	static const struct test_params test_params[] = {
+		// Testing: Flow inside a net /24
 		[0] = TEST(0x04030201, &check_flow, 1,
-			.config_json_path = "./tests/0005-testSensorNets.json"),
+			   .config_json_path =
+			   "./tests/0005-testSensorNets.json"),
 
-		/* Testing: Flow inside a IP address /32 */
-		[1] = TEST(0x04030301, &check_flow, 1,),
+		// Testing: Flow inside a IP address /32
 
-		/* Testing: Flow inside a IP address */
-		[2] = TEST(0x04030401, &check_flow, 1,),
+		[1] = TEST(0x04030301, &check_flow, 1, ),
 
-		/* Testing: Flow outside sensor range */
+		// Testing: Flow inside a IP address
+		[2] = TEST(0x04030401, &check_flow, 1, ),
+
+		// Testing: Flow outside sensor range
 		[3] = TEST(0x04040501, NULL, 0),
 	};
 
@@ -108,8 +112,9 @@ static int prepare_test_sensor_net(void **state) {
 }
 
 int main() {
-	const struct CMUnitTest tests[] = {
-		cmocka_unit_test_setup(testFlow, prepare_test_sensor_net),
+	static const struct CMUnitTest tests[] = {
+			cmocka_unit_test_setup(testFlow,
+					       prepare_test_sensor_net),
 	};
 
 	return cmocka_run_group_tests(tests, nf_test_setup, nf_test_teardown);
