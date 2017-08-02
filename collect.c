@@ -1983,6 +1983,14 @@ static void *netFlowConsumerLoop(void *vworker) {
     rk = init_kafka_consumer();
   }
 
+  pthread_mutex_lock(&readOnlyGlobals.packetProcessThread_mtx);
+  while (NULL == readOnlyGlobals.rb_databases.sensors_info) {
+    // Wait for initialization
+    pthread_cond_wait(&readOnlyGlobals.packetProcessThread_cnd,
+                      &readOnlyGlobals.packetProcessThread_mtx);
+  }
+  pthread_mutex_unlock(&readOnlyGlobals.packetProcessThread_mtx);
+
   while(true) {
     QueuedPacket *packet = get_packet(worker, rk);
     pop_all_templates(&worker->templates_queue);

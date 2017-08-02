@@ -211,11 +211,13 @@ typedef struct {
 
   /* Export Options */
   size_t numProcessThreads;
+  worker_t **packetProcessThread;
+  pthread_mutex_t packetProcessThread_mtx; /// sensors & workers cross dependency
+  pthread_cond_t packetProcessThread_cnd; /// sensors & workers cross dependency
 
   bool useSyslog;
   int traceLevel;
 
-  worker_t **packetProcessThread;
 
 #ifdef HAVE_GEOIP
   /* GeoIP */

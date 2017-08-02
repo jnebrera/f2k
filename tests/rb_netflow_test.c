@@ -366,6 +366,9 @@ test_flow_i(const struct test_params *params, worker_t *worker) {
 		}
 		readOnlyGlobals.rb_databases.sensors_info = read_rb_config(
 				params->config_json_path, &worker, 1);
+		pthread_mutex_lock(&readOnlyGlobals.packetProcessThread_mtx);
+		pthread_cond_broadcast(&readOnlyGlobals.packetProcessThread_cnd);
+		pthread_mutex_unlock(&readOnlyGlobals.packetProcessThread_mtx);
 	}
 
 	if (params->mac_vendor_database_path) {

@@ -1548,6 +1548,11 @@ udns_config_err:
   if(reload_sensors_info == 1) {
     if(unlikely(readOnlyGlobals.enable_debug))
       traceEvent(TRACE_NORMAL,"reloading sensors info");
+
+    if (!reparse_options) {
+      pthread_mutex_lock(&readOnlyGlobals.packetProcessThread_mtx);
+    }
+
     pthread_rwlock_wrlock(&readOnlyGlobals.rb_databases.mutex);
     if(readOnlyGlobals.rb_databases.sensors_info)
       delete_rb_sensors_db(readOnlyGlobals.rb_databases.sensors_info);
@@ -1556,7 +1561,14 @@ udns_config_err:
            readOnlyGlobals.packetProcessThread,
            readOnlyGlobals.numProcessThreads);
     reload_sensors_info = 0;
-    pthread_rwlock_unlock(&readOnlyGlobals.rb_databases.mutex);
+
+    if (!reparse_options) {
+      pthread_cond_broadcast(&readOnlyGlobals.packetProcessThread_cnd);
+      pthread_mutex_unlock(&readOnlyGlobals.packetProcessThread_mtx);
+    }
+  } else if (!reparse_options) {
+    traceEvent(TRACE_ERROR, "No sensors given");
+    return -1;
   }
 
 #ifdef HAVE_ZOOKEEPER
@@ -1770,6 +1782,9 @@ static void shutdown_f2k(void) {
   }
   free(readOnlyGlobals.udns.dns_info_array);
 #endif
+
+  pthread_mutex_destroy(&readOnlyGlobals.packetProcessThread_mtx);
+  pthread_cond_destroy(&readOnlyGlobals.packetProcessThread_cnd);
 
   free(readWriteGlobals); /* Do not move it up as it's needed for logging */
 
@@ -2229,6 +2244,8 @@ static void init_globals(void) {
   /* Resever one core as a thread is used for packet dequeueing */
   readOnlyGlobals.numProcessThreads = 1;
   listener_list_init(&readOnlyGlobals.listeners);
+  pthread_mutex_init(&readOnlyGlobals.packetProcessThread_mtx, NULL);
+  pthread_cond_init(&readOnlyGlobals.packetProcessThread_cnd, NULL);
 
   readOnlyGlobals.traceLevel = 2;
   readOnlyGlobals.pcapPtr = NULL;
