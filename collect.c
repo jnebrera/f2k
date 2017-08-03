@@ -1884,6 +1884,11 @@ static struct string_list *dissectNetFlow(worker_t *worker,
       + record->flowHeader.engine_id;
     observation_id_t *observation_id = get_sensor_observation_id(sensor_object,
       observation_id_n);
+    if (unlikely(NULL == observation_id)) {
+      traceEvent(TRACE_ERROR, "Unknown observation id %"PRIu32" from sensor %s",
+                 observation_id_n, sensor_ip_string(sensor_object));
+      return NULL;
+    }
     struct string_list *ret = dissectNetFlowV5(worker, sensor_object,
       observation_id, the5Record);
     observation_id_decref(observation_id);

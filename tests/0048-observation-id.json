@@ -27,6 +27,22 @@
 					]
 				}
 			}
+		},
+		"4.3.3.0/24" : {
+			"observations_id" : {
+				"1" : {
+					"enrichment" : {
+						"observation_id" : "observation_1",
+						"sensor_ip" : "4.3.3.0/24"
+					},
+					"home_nets" : [
+						{
+							"network" : "10.14.0.0/16",
+							"network_name" : "users14"
+						}
+					]
+				}
+			}
 		}
 	}
 }

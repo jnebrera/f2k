@@ -69,6 +69,11 @@ static const NetFlow5Record record_obs_id_2 =
 			   2,
 			   .dPkts = constexpr_be32toh(2),
 			   .dOctets = constexpr_be32toh(10));
+static const NetFlow5Record record_obs_id_3 =
+		NF5_RECORD(0,
+			   3,
+			   .dPkts = constexpr_be32toh(2),
+			   .dOctets = constexpr_be32toh(10));
 
 /* ******************************* NETFLOW V9 ******************************* */
 
@@ -102,12 +107,20 @@ static const IPFIX_TEMPLATE(ipfix_template_oid_2,
 			    TEST_FLOW_HEADER(2),
 			    TEST_TEMPLATE_ID,
 			    FLOW_ENTITIES_OBSERVATION_ID_2);
+static const IPFIX_TEMPLATE(ipfix_template_oid_3,
+			    TEST_FLOW_HEADER(2),
+			    TEST_TEMPLATE_ID,
+			    FLOW_ENTITIES_OBSERVATION_ID_2);
 
 static const IPFIX_FLOW(ipfix_flow_oid_1,
 			TEST_FLOW_HEADER(1),
 			TEST_TEMPLATE_ID,
 			FLOW_ENTITIES_OBSERVATION_ID_1);
 static const IPFIX_FLOW(ipfix_flow_oid_2,
+			TEST_FLOW_HEADER(2),
+			TEST_TEMPLATE_ID,
+			FLOW_ENTITIES_OBSERVATION_ID_2);
+static const IPFIX_FLOW(ipfix_flow_oid_3,
 			TEST_FLOW_HEADER(2),
 			TEST_TEMPLATE_ID,
 			FLOW_ENTITIES_OBSERVATION_ID_2);
@@ -149,9 +162,9 @@ static int prepare_test_observation_id_enrichment(void **state) {
 	static const struct checkdata checkdata_oid2 =
 			CHECKDATA(checkdata_values_obs_id_2);
 
-#define TEST(mrecord, mrecord_size, checks, checks_size, ...)                  \
+#define TEST(t_src_ip, mrecord, mrecord_size, checks, checks_size, ...)        \
 	{                                                                      \
-		.netflow_src_ip = 0x04030201, .record = mrecord,               \
+		.netflow_src_ip = t_src_ip, .record = mrecord,                 \
 		.record_size = mrecord_size, .checkdata = checks,              \
 		.checkdata_size = checks_size, __VA_ARGS__                     \
 	}
@@ -159,35 +172,57 @@ static int prepare_test_observation_id_enrichment(void **state) {
 	// clang-format off
 	static const struct test_params test_params[] = {
 			// NF5
-		TEST(&record_obs_id_1,
+		TEST(0x04030201,
+		     &record_obs_id_1,
 		     sizeof(record_obs_id_1),
 		     &checkdata_oid1,
 		     1,
 		     .config_json_path = "./tests/0048-observation-id.json"),
-		TEST(&record_obs_id_2,
+		TEST(0x04030201,
+		     &record_obs_id_2,
 		     sizeof(record_obs_id_2),
 		     &checkdata_oid2,
 		     1, ),
+		// Unknown observation ID
+		TEST(0x04030301,
+		     &record_obs_id_3,
+		     sizeof(record_obs_id_3),
+		     NULL,
+		     0, ),
 
 		// IPFIX templates, in different oids
-		TEST(&ipfix_template_oid_1,
+		TEST(0x04030201,
+		     &ipfix_template_oid_1,
 		     sizeof(ipfix_template_oid_1),
 		     NULL,
 		     0, ),
-		TEST(&ipfix_template_oid_2,
+		TEST(0x04030201,
+		     &ipfix_template_oid_2,
 		     sizeof(ipfix_template_oid_2),
+		     NULL,
+		     0, ),
+		TEST(0x04030301,
+		     &ipfix_template_oid_3,
+		     sizeof(ipfix_template_oid_3),
 		     NULL,
 		     0, ),
 
 		// IPFIX flows, different observations id
-		TEST(&ipfix_flow_oid_1,
+		TEST(0x04030201,
+		     &ipfix_flow_oid_1,
 		     sizeof(ipfix_flow_oid_1),
 		     &checkdata_oid1,
 		     1, ),
-		TEST(&ipfix_flow_oid_2,
+		TEST(0x04030201,
+		     &ipfix_flow_oid_2,
 		     sizeof(ipfix_flow_oid_2),
 		     &checkdata_oid2,
 		     1, ),
+		TEST(0x04030301,
+		     &ipfix_flow_oid_3,
+		     sizeof(ipfix_flow_oid_3),
+		     NULL,
+		     0, ),
 	};
 	// clang-format on
 
