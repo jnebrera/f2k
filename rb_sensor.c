@@ -868,7 +868,6 @@ struct rb_sensors_db {
     rd_avl_t avl;
     rd_memctx_t memctx;
   } bad_sensors;
-	listener_list new_listeners; //< Listeners that have to open
 	json_t *root; //< Json data
 };
 
@@ -1052,7 +1051,6 @@ static struct rb_sensors_db *allocate_rb_sensors_db() {
 #ifdef RB_DATABASE_MAGIC
 	database->magic = RB_DATABASE_MAGIC;
 #endif
-	listener_list_init(&database->new_listeners);
 	rd_avl_init(&database->sensors.avl, compare_sensors,
 								RD_AVL_F_LOCKS);
 	rd_avl_init(&database->bad_sensors.avl, compare_bad_sensors,
