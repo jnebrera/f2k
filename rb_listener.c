@@ -64,7 +64,7 @@ static void* netFlowCollectLoop0(struct port_collector *collector) {
   /* traceEvent(TRACE_NORMAL, "netFlowMainLoop(%u) thread...", thread_id); */
   readOnlyGlobals.datalink = DLT_EN10MB;
 
-  while(!readWriteGlobals->shutdownInProgress) {
+  while(likely(collector->run)) {
     socklen_t socklen = sizeof(fromHostV4);
     if(NULL==qpacket){
         qpacket = newQueuedPacket(allocated_buffer_len);
@@ -80,7 +80,7 @@ static void* netFlowCollectLoop0(struct port_collector *collector) {
     } else if(qpacket->buffer_len > 0){
 #ifdef DEBUG_FLOWS
       if(unlikely(readOnlyGlobals.enable_debug))
-        traceEvent(TRACE_INFO,
+        traceEvent(TRACE_WARNING,
           "NETFLOW_DEBUG: Received sFlow/NetFlow packet(len=%d)",
           qpacket->buffer_len);
 #endif
@@ -114,6 +114,7 @@ static void* netFlowCollectLoop0(struct port_collector *collector) {
     }
   }
 
+  free(qpacket);
   return(NULL);
 }
 
@@ -132,7 +133,9 @@ void closeNetFlowListener(struct port_collector *collector) {
   assert(collector);
 
   if(collector->socket > 0){
+    ATOMIC_OP(and, fetch, &collector->run, 0);
     traceEvent(TRACE_NORMAL,"Closing socket UPD port %u",collector->port);
+    pthread_join(collector->listener, NULL);
     close(collector->socket);
   }
   free(collector);
@@ -147,7 +150,7 @@ static int wakeUpListener(struct port_collector *listener) {
   errno = 0;
   switch(listener->proto){
   case UDP:
-    listener->socket = socket(AF_INET, SOCK_DGRAM, 0);
+    listener->socket = socket(AF_INET, SOCK_DGRAM | SOCK_NONBLOCK, 0);
     break;
   default:
     traceEvent(TRACE_ERROR,"Unknown protocol %d, can't create socket",listener->proto);
@@ -181,8 +184,10 @@ static int wakeUpListener(struct port_collector *listener) {
     goto close_socket;
   }
 
-  if(listener->socket > 0)
+  listener->run = 1;
+  if(listener->socket > 0) {
     pthread_create(&listener->listener, NULL, netFlowCollectLoop, listener);
+  }
 
   return 0;
 
