@@ -1402,6 +1402,9 @@ static int parseOptions(int argc, char* argv[], const bool reparse_options) {
     }
   }
 
+  // Read all databases
+  check_if_reload(&readOnlyGlobals.rb_databases);
+
   if (collector_ports) {
     listener_list new_listeners_list;
     listener_list_init(&new_listeners_list);
@@ -1562,6 +1565,7 @@ udns_config_err:
            readOnlyGlobals.packetProcessThread,
            readOnlyGlobals.numProcessThreads);
     reload_sensors_info = 0;
+    pthread_rwlock_unlock(&readOnlyGlobals.rb_databases.mutex);
 
     if (!reparse_options) {
       pthread_cond_broadcast(&readOnlyGlobals.packetProcessThread_cnd);
@@ -1751,6 +1755,7 @@ static void shutdown_f2k(void) {
   /* Clean globals */
   traceEvent(TRACE_INFO, "Cleaning globals");
 
+  free(readOnlyGlobals.rb_databases.sensors_info_path);
   free(readOnlyGlobals.unprivilegedUser);
 
   // free(readOnlyGlobals.packetProcessThread);
