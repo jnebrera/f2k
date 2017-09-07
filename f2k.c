@@ -984,8 +984,10 @@ static int parseOptions(int argc, char* argv[], const bool reparse_options) {
 
     fd = fopen(argv[1], "r");
 
-    if(fd == NULL) {
-      traceEvent(TRACE_ERROR, "Unable to read config. file %s", argv[1]);
+    if (unlikely(fd == NULL)) {
+      char errstr[256];
+      strerror_r(errno, errstr, sizeof(errstr));
+      traceEvent(TRACE_ERROR, "Unable to read config. file %s: %s", argv[1], errstr);
       exit(-1);
     }
 
