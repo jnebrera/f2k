@@ -1362,7 +1362,11 @@ static struct string_list *dissectNetFlowV9V10FlowSetWithTemplate(
 
     for(fieldId=0; fieldId<cursor->templateInfo.fieldCount; fieldId++) {
       uint16_t real_field_len = 0, real_field_len_offset = 0;
-      if(!(displ < end_flow)) break; /* Flow too short */
+      if(!(displ < end_flow)) {
+        traceEvent(TRACE_ERROR, "Flow too short [displ=%zd][end_flow=%d]",
+                   displ, end_flow);
+        break; /* Flow too short */
+      }
 
       if(handle_ipfix && (fields[fieldId].fieldLen == 65535)) {
         /* IPFIX Variable lenght field */
