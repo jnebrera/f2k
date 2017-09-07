@@ -1116,7 +1116,6 @@ static int parseOptions(int argc, char* argv[], const bool reparse_options) {
       case 258: /* rb-config file */
       case 'z': /* zk-host */
       case 262: /* zk-timeout */
-      case '3': /* collector port */
         discard_option = false;
         break;
 
