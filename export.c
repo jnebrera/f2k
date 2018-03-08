@@ -434,6 +434,40 @@ static size_t print_netflow_direction(struct printbuf *kafka_line_buffer,
     "");
 }
 
+size_t print_firewall_event(struct printbuf *kafka_line_buffer,
+    const void *buffer, const size_t real_field_len,
+    struct flowCache *flow_cache) {
+  (void)flow_cache;
+  const uint64_t fw_event = net2number(buffer, real_field_len);
+  const char *p = NULL;
+
+  switch (fw_event) {
+  case 1:
+    p = "Created";
+    break;
+  case 2:
+    p = "Deleted";
+    break;
+  case 3:
+    p = "Denied";
+    break;
+  case 4:
+    p = "Alert";
+    break;
+  case 5:
+    p = "Update";
+    break;
+  default:
+    break;
+  };
+
+  if (NULL == p) {
+    return 0;
+  }
+
+  return printbuf_memappend_fast_string(kafka_line_buffer, p);
+}
+
 size_t print_flow_cache_direction(struct printbuf *kafka_line_buffer,
     const void *buffer, const size_t real_field_len,
     struct flowCache *flow_cache) {

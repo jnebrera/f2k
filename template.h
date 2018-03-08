@@ -231,6 +231,7 @@ const char* getStandardFieldId(size_t id);
 	X(STANDARD_ENTERPRISE_ID, FLOW_START_MILLISECONDS, 152, DONT_QUOTE_OUTPUT, "FLOW_START_MILLISECONDS", "flow_start_milliseconds", "flowStartMilliseconds", "Msec (epoch) of the first flow packet",save_first_msecond, NO_CHILDS)\
 	X(STANDARD_ENTERPRISE_ID, FLOW_END_MILLISECONDS, 153, DONT_QUOTE_OUTPUT, "FLOW_END_MILLISECONDS", "flow_end_milliseconds",  "flowEndMilliseconds",  "Msec (epoch) of the last flow packet",save_last_msecond, NO_CHILDS)\
 	X(STANDARD_ENTERPRISE_ID, PADDING_OCTETS, 210, DONT_QUOTE_OUTPUT, "PADDING_OCTETS", "padding", "padding", "Padding", NO_FN, NO_CHILDS)\
+	X(STANDARD_ENTERPRISE_ID, FIREWALL_EVENT, 233, QUOTE_OUTPUT, "FIREWALL_EVENT", "firewall_event", "firewall_event", "Flow firewall event (created, deleted, denied...)", print_firewall_event, NO_CHILDS)\
 	X(STANDARD_ENTERPRISE_ID, INGRESS_VRFID, 234, DONT_QUOTE_OUTPUT, "INGRESS_VRFID", "input_vrf", "ingressVRFID", "Ingress Virtual Routing&Forwarding Interface ID",print_number, NO_CHILDS)\
 	X(STANDARD_ENTERPRISE_ID, EGRESS_VRFID, 235, DONT_QUOTE_OUTPUT, "EGRESS_VRFID", "output_vrf", "egressVRFID", "Egress Virtual Routing&Forwarding Interface ID",print_number, NO_CHILDS)\
 	X(STANDARD_ENTERPRISE_ID, BIFLOW_DIRECTION, 239, QUOTE_OUTPUT, "BIFLOW_DIRECTION", "biflow_direction",  "biflow_direction",  "1=initiator, 2=reverseInitiator", print_biflow_direction, NO_CHILDS)\

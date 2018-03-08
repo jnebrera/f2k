@@ -165,6 +165,10 @@ size_t print_biflow_direction(struct printbuf * kafka_line_buffer,
     const void *buffer, const size_t real_field_len,
     struct flowCache *flowCache);
 
+size_t print_firewall_event(struct printbuf *kafka_line_buffer,
+    const void *buffer, const size_t real_field_len,
+    struct flowCache *flow_cache);
+
 size_t print_flow_cache_direction(struct printbuf *kafka_line_buffer,
     const void *buffer, const size_t real_field_len,
     struct flowCache *flowCache);

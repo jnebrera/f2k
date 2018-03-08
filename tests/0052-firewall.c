@@ -40,7 +40,7 @@
 
 #define TEST_TEMPLATE_ID 256
 
-#define TEST_FIREWALL_BASE(RT, R, t_icmp_type, t_flow_id)                      \
+#define TEST_FIREWALL_BASE(RT, R, t_icmp_type, t_flow_id, t_firewall_event)    \
 	RT(IN_BYTES, 8, 0, UINT64_TO_UINT8_ARR(98))                            \
 	RT(IN_PKTS, 4, 0, UINT32_TO_UINT8_ARR(1))                              \
 	RT(PROTOCOL, 1, 0, 1)                                                  \
@@ -57,16 +57,17 @@
 	RT(ICMP_TYPE, 2, 0, UINT16_TO_UINT8_ARR(t_icmp_type))                  \
 	RT(DIRECTION, 1, 0, 0)                                                 \
 	RT(FLOW_ID, 8, 0, UINT64_TO_UINT8_ARR(t_flow_id))                      \
-	RT(233 /* FIREWALL_EVENT */, 1, 0, 0)
+	RT(FIREWALL_EVENT, 1, 0, t_firewall_event)
 
-#define TEST_ICMP_TYPE_ENTITIES_1(RT, R) TEST_FIREWALL_BASE(RT, R, 0, 599)
-#define TEST_ICMP_TYPE_ENTITIES_2(RT, R) TEST_FIREWALL_BASE(RT, R, 265, 599)
+#define TEST_ICMP_TYPE_ENTITIES_1(RT, R) TEST_FIREWALL_BASE(RT, R, 0, 599, 0)
+#define TEST_ICMP_TYPE_ENTITIES_2(RT, R) TEST_FIREWALL_BASE(RT, R, 265, 599, 0)
 
-#define FIREWALL_CHECKDATA(t_icmp_type, t_flow_id)                             \
+#define FIREWALL_CHECKDATA(t_icmp_type, t_flow_id, t_fw_event)                 \
 	{                                                                      \
 			{.key = "type", .value = "netflowv9"},                 \
 			{.key = "icmp_type", .value = #t_icmp_type},           \
 			{.key = "flow_id", .value = #t_flow_id},               \
+			{.key = "firewall_event", .value = t_fw_event},        \
 	};
 
 static int prepare_test_firewall_base(const void *v9_flow,
@@ -165,10 +166,10 @@ static int prepare_test_firewall_icmp_type(void **state) {
 					TEST_ICMP_TYPE_ENTITIES_2);
 
 	static const struct checkdata_value checkdata1[] =
-			FIREWALL_CHECKDATA(0, 599);
+			FIREWALL_CHECKDATA(0, 599, NULL);
 
 	static const struct checkdata_value checkdata2[] =
-			FIREWALL_CHECKDATA(265, 599);
+			FIREWALL_CHECKDATA(265, 599, NULL);
 
 	static const struct checkdata it_checkdata[] = {
 			{.size = RD_ARRAYSIZE(checkdata1),
@@ -184,8 +185,8 @@ static int prepare_test_firewall_icmp_type(void **state) {
 					  state);
 }
 
-#define TEST_FLOW_ID_ENTITIES_1(RT, R) TEST_FIREWALL_BASE(RT, R, 0, 0)
-#define TEST_FLOW_ID_ENTITIES_2(RT, R) TEST_FIREWALL_BASE(RT, R, 0, 599)
+#define TEST_FLOW_ID_ENTITIES_1(RT, R) TEST_FIREWALL_BASE(RT, R, 0, 0, 0)
+#define TEST_FLOW_ID_ENTITIES_2(RT, R) TEST_FIREWALL_BASE(RT, R, 0, 599, 0)
 static int prepare_test_firewall_flow_id(void **state) {
 	static const FIREWALL_TWO_FLOWS(it_flow,
 					TEST_FLOW_HEADER,
@@ -194,16 +195,100 @@ static int prepare_test_firewall_flow_id(void **state) {
 					TEST_FLOW_ID_ENTITIES_2);
 
 	static const struct checkdata_value checkdata1[] =
-			FIREWALL_CHECKDATA(0, 0);
+			FIREWALL_CHECKDATA(0, 0, NULL);
 
 	static const struct checkdata_value checkdata2[] =
-			FIREWALL_CHECKDATA(0, 599);
+			FIREWALL_CHECKDATA(0, 599, NULL);
 
 	static const struct checkdata it_checkdata[] = {
 			{.size = RD_ARRAYSIZE(checkdata1),
 			 .checks = checkdata1},
 			{.size = RD_ARRAYSIZE(checkdata2),
 			 .checks = checkdata2},
+	};
+
+	return prepare_test_firewall_base(&it_flow,
+					  sizeof(it_flow),
+					  it_checkdata,
+					  RD_ARRAYSIZE(it_checkdata),
+					  state);
+}
+
+#define TEST_FW_EVENT_ZERO_ENTITIES(RT, R) TEST_FIREWALL_BASE(RT, R, 0, 0, 0)
+#define TEST_FW_EVENT_CREATED_ENTITIES(RT, R) TEST_FIREWALL_BASE(RT, R, 0, 0, 1)
+#define TEST_FW_EVENT_DELETED_ENTITIES(RT, R) TEST_FIREWALL_BASE(RT, R, 0, 0, 2)
+#define TEST_FW_EVENT_DENIED_ENTITIES(RT, R) TEST_FIREWALL_BASE(RT, R, 0, 0, 3)
+#define TEST_FW_EVENT_ALERT_ENTITIES(RT, R) TEST_FIREWALL_BASE(RT, R, 0, 0, 4)
+#define TEST_FW_EVENT_UPDATE_ENTITIES(RT, R) TEST_FIREWALL_BASE(RT, R, 0, 0, 5)
+#define TEST_FW_EVENT_INVALID_ENTITIES(RT, R) TEST_FIREWALL_BASE(RT, R, 0, 0, 6)
+static int prepare_test_firewall_fw_event(void **state) {
+	static const struct {
+		V9FlowHeader flow_header;
+		struct {
+			V9TemplateHeader flow_set_header;
+			uint8_t buffer[FLOW_BYTES_LENGTH(
+					TEST_FW_EVENT_ZERO_ENTITIES)];
+		} __attribute__((packed)) flowset[7];
+	} __attribute__((packed))
+	it_flow = {.flow_header = {.version = constexpr_be16toh(9),
+				   .unix_secs = constexpr_be32toh(1520362144),
+				   .count = constexpr_be16toh(7),
+				   TEST_FLOW_HEADER},
+		   // clang-format off
+	 .flowset = {
+		ONE_FLOW_FLOWSET(TEST_TEMPLATE_ID,
+				 TEST_FW_EVENT_ZERO_ENTITIES),
+		ONE_FLOW_FLOWSET(TEST_TEMPLATE_ID,
+				 TEST_FW_EVENT_CREATED_ENTITIES),
+		ONE_FLOW_FLOWSET(TEST_TEMPLATE_ID,
+				 TEST_FW_EVENT_DELETED_ENTITIES),
+		ONE_FLOW_FLOWSET(TEST_TEMPLATE_ID,
+				 TEST_FW_EVENT_DENIED_ENTITIES),
+		ONE_FLOW_FLOWSET(TEST_TEMPLATE_ID,
+				 TEST_FW_EVENT_ALERT_ENTITIES),
+		ONE_FLOW_FLOWSET(TEST_TEMPLATE_ID,
+				 TEST_FW_EVENT_UPDATE_ENTITIES),
+		ONE_FLOW_FLOWSET(TEST_TEMPLATE_ID,
+				 TEST_FW_EVENT_INVALID_ENTITIES),
+				   // clang-format on
+		   }};
+
+	static const struct checkdata_value checkdata1[] =
+			FIREWALL_CHECKDATA(0, 0, NULL);
+
+	static const struct checkdata_value checkdata2[] =
+			FIREWALL_CHECKDATA(0, 0, "Created");
+
+	static const struct checkdata_value checkdata3[] =
+			FIREWALL_CHECKDATA(0, 0, "Deleted");
+
+	static const struct checkdata_value checkdata4[] =
+			FIREWALL_CHECKDATA(0, 0, "Denied");
+
+	static const struct checkdata_value checkdata5[] =
+			FIREWALL_CHECKDATA(0, 0, "Alert");
+
+	static const struct checkdata_value checkdata6[] =
+			FIREWALL_CHECKDATA(0, 0, "Update");
+
+	static const struct checkdata_value checkdata7[] =
+			FIREWALL_CHECKDATA(0, 0, NULL);
+
+	static const struct checkdata it_checkdata[] = {
+			{.size = RD_ARRAYSIZE(checkdata1),
+			 .checks = checkdata1},
+			{.size = RD_ARRAYSIZE(checkdata2),
+			 .checks = checkdata2},
+			{.size = RD_ARRAYSIZE(checkdata3),
+			 .checks = checkdata3},
+			{.size = RD_ARRAYSIZE(checkdata4),
+			 .checks = checkdata4},
+			{.size = RD_ARRAYSIZE(checkdata5),
+			 .checks = checkdata5},
+			{.size = RD_ARRAYSIZE(checkdata6),
+			 .checks = checkdata6},
+			{.size = RD_ARRAYSIZE(checkdata7),
+			 .checks = checkdata7},
 	};
 
 	return prepare_test_firewall_base(&it_flow,
@@ -219,6 +304,8 @@ int main() {
 					       prepare_test_firewall_icmp_type),
 			cmocka_unit_test_setup(testFlow,
 					       prepare_test_firewall_flow_id),
+			cmocka_unit_test_setup(testFlow,
+					       prepare_test_firewall_fw_event),
 	};
 
 	return cmocka_run_group_tests(tests, nf_test_setup, nf_test_teardown);
