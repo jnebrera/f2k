@@ -36,6 +36,7 @@
 #include <syslog.h>
 
 #include <ctype.h>
+#include <pcap/sll.h>
 
 /* *************************************** */
 
@@ -290,21 +291,30 @@ static int isFlowPort(const uint16_t port){
   }
 }
 
-static uint16_t _eth_type(const struct ether_header *ehdr){
+static uint16_t _eth_type(const void *link_hdr) {
   uint32_t null_type;
+  union {
+    const struct ether_header *eth_hdr;
+    const struct sll_header *sll_hdr;
+  } hdr = {
+    .eth_hdr = link_hdr
+  };
 
   switch(readOnlyGlobals.datalink) {
-  case DLT_ANY: /* Linux 'any' device */
-    return DLT_ANY;
+  case DLT_ANY: { /* Linux 'any' device */
+    return (hdr.sll_hdr->sll_protocol == ntohs(0x0800)) ? ETHERTYPE_IP
+                                                        : ETHERTYPE_IPV6;
+  }
 
-  case DLT_RAW: /* Raw packet data */
-    if(((((const uint8_t *)ehdr)[0] & 0xF0) >> 4) == 4)
+  case DLT_RAW: { /* Raw packet data */
+    if(((((const uint8_t *)hdr.eth_hdr)[0] & 0xF0) >> 4) == 4)
       return ETHERTYPE_IP;
     else
       return ETHERTYPE_IPV6;
     break;
+  }
   case DLT_NULL: /* loopaback interface */
-    memcpy(&null_type, ehdr, sizeof(uint32_t));
+    memcpy(&null_type, link_hdr, sizeof(uint32_t));
     //null_type = ntohl(null_type);
     /* All this crap is due to the old little/big endian story... */
     /* FIX !!!! */
@@ -324,8 +334,8 @@ static uint16_t _eth_type(const struct ether_header *ehdr){
   case DLT_PPP:
     break;
   default:
-    assert(ehdr);
-    return ntohs(ehdr->ether_type);
+    assert(link_hdr);
+    return ntohs(hdr.eth_hdr->ether_type);
     break;
   };
 
@@ -343,6 +353,9 @@ static size_t _eth_shift(){
 
   case DLT_PPP:
     return 0;
+
+  case DLT_ANY:
+    return sizeof(struct sll_header);
 
   default:
     return sizeof(struct eth_header);
@@ -387,7 +400,7 @@ static void deepPacketDecode(u_short thread_id __attribute__((unused)),
 
   size_t plen, hlen = 0, ip_len = 0;
 
-  const uint16_t eth_type = _eth_type((const struct ether_header *)qpacket->buffer);
+  const uint16_t eth_type = _eth_type(qpacket->buffer);
   const size_t   ehshift = _eth_shift();
 
   switch(eth_type) {
@@ -396,9 +409,6 @@ static void deepPacketDecode(u_short thread_id __attribute__((unused)),
     return;
   case ETHERTYPE_MPLS:
     traceEvent(TRACE_WARNING, "Does not processing MPLS packets.");
-    return;
-  case DLT_ANY:
-    traceEvent(TRACE_WARNING, "Does not processing ANY packets (use -i in tcpdump)");
     return;
   case DLT_NULL:
     traceEvent(TRACE_WARNING, "Cannot find any IPv4/IPv6 packets in LO interface");
