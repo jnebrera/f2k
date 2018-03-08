@@ -168,7 +168,7 @@ const char* getStandardFieldId(size_t id);
 	X(STANDARD_ENTERPRISE_ID, IPV6_DST_NAME, PRIVATE_ENTITY_ID, QUOTE_OUTPUT, "IPV6_DST_NAME", "dst_name", "destinationIPv6Address", "IPv6 destination name",NO_FN, NO_CHILDS)\
 	X(STANDARD_ENTERPRISE_ID, IPV6_DST_NET_NAME, PRIVATE_ENTITY_ID, QUOTE_OUTPUT, "IPV6_DST_NET_NAME", "dst_net_name", "destinationIPv6NetName", "IPv6 destination net name",print_net_name_v6, NO_CHILDS)\
 	X(STANDARD_ENTERPRISE_ID, IPV6_DST_NET, PRIVATE_ENTITY_ID, QUOTE_OUTPUT, "IPV6_DST_NET", "dst_net", "destinationIPv6Net", "IPv6 destination net name",print_net_v6, IPV6_DST_NET_NAME)\
-	X(STANDARD_ENTERPRISE_ID, ICMP_TYPE, 32, DONT_QUOTE_OUTPUT, "ICMP_TYPE", "icmp_type", "icmpTypeCodeIPv4", "ICMP Type * 256 + ICMP code",NO_FN, NO_CHILDS)\
+	X(STANDARD_ENTERPRISE_ID, ICMP_TYPE, 32, DONT_QUOTE_OUTPUT, "ICMP_TYPE", "icmp_type", "icmpTypeCodeIPv4", "ICMP Type * 256 + ICMP code",print_number, NO_CHILDS)\
 	X(STANDARD_ENTERPRISE_ID, SAMPLING_INTERVAL, 34, DONT_QUOTE_OUTPUT, "SAMPLING_INTERVAL", "sampling_interval", "<reserved>", "Sampling rate",NO_FN, NO_CHILDS)\
 	X(STANDARD_ENTERPRISE_ID, SAMPLING_ALGORITHM, 35, DONT_QUOTE_OUTPUT, "SAMPLING_ALGORITHM", "sampling_algorithm", "<reserved>", "Sampling type (deterministic/random)",NO_FN, NO_CHILDS)\
 	X(STANDARD_ENTERPRISE_ID, FLOW_ACTIVE_TIMEOUT, 36, DONT_QUOTE_OUTPUT, "FLOW_ACTIVE_TIMEOUT", "flow_active_timeout", "flowActiveTimeout", "Activity timeout of flow cache entries",NO_FN, NO_CHILDS)\
