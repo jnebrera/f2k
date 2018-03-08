@@ -40,7 +40,7 @@
 
 #define TEST_TEMPLATE_ID 256
 
-#define TEST_ICMP_TYPE_ENTITIES_BASE(RT, R, T_ICMP_TYPE)                       \
+#define TEST_FIREWALL_BASE(RT, R, t_icmp_type, t_flow_id)                      \
 	RT(IN_BYTES, 8, 0, UINT64_TO_UINT8_ARR(98))                            \
 	RT(IN_PKTS, 4, 0, UINT32_TO_UINT8_ARR(1))                              \
 	RT(PROTOCOL, 1, 0, 1)                                                  \
@@ -54,85 +54,31 @@
 	RT(OUTPUT_SNMP, 4, 0, 0x00, 0x00, 0x00, 0x04)                          \
 	RT(FIRST_SWITCHED, 4, 0, UINT32_TO_UINT8_ARR(400000))                  \
 	RT(LAST_SWITCHED, 4, 0, UINT32_TO_UINT8_ARR(400000))                   \
-	RT(ICMP_TYPE, 2, 0, UINT16_TO_UINT8_ARR(T_ICMP_TYPE))                  \
+	RT(ICMP_TYPE, 2, 0, UINT16_TO_UINT8_ARR(t_icmp_type))                  \
 	RT(DIRECTION, 1, 0, 0)                                                 \
-	RT(FLOW_ID, 8, 0, UINT64_TO_UINT8_ARR(599))                            \
+	RT(FLOW_ID, 8, 0, UINT64_TO_UINT8_ARR(t_flow_id))                      \
 	RT(233 /* FIREWALL_EVENT */, 1, 0, 0)
 
-#define TEST_ICMP_TYPE_ENTITIES_1(RT, R) TEST_ICMP_TYPE_ENTITIES_BASE(RT, R, 0)
-#define TEST_ICMP_TYPE_ENTITIES_2(RT, R)                                       \
-	TEST_ICMP_TYPE_ENTITIES_BASE(RT, R, 265)
+#define TEST_ICMP_TYPE_ENTITIES_1(RT, R) TEST_FIREWALL_BASE(RT, R, 0, 599)
+#define TEST_ICMP_TYPE_ENTITIES_2(RT, R) TEST_FIREWALL_BASE(RT, R, 265, 599)
 
-// Every flow will have the same length, since they only contains one record
-// each. Flowset header len + flow len.
-#define FLOWSET_LEN                                                            \
-	(sizeof(V9TemplateHeader) +                                            \
-	 FLOW_BYTES_LENGTH(TEST_ICMP_TYPE_ENTITIES_1))
+#define FIREWALL_CHECKDATA(t_icmp_type, t_flow_id)                             \
+	{                                                                      \
+			{.key = "type", .value = "netflowv9"},                 \
+			{.key = "icmp_type", .value = #t_icmp_type},           \
+			{.key = "flow_id", .value = #t_flow_id},               \
+	};
 
-static const struct checkdata_value checkdata1[] = {
-		{.key = "type", .value = "netflowv9"},
-		{.key = "icmp_type", .value = "0"},
-};
-
-static const struct checkdata_value checkdata2[] = {
-		{.key = "type", .value = "netflowv9"},
-		{.key = "icmp_type", .value = "265"},
-};
-
-static int prepare_test_firewall_icmp_type(void **state) {
+static int prepare_test_firewall_base(const void *v9_flow,
+				      size_t v9_flow_size,
+				      const struct checkdata *checkdata,
+				      size_t checkdata_size,
+				      void **state) {
+	// Same template for all tests
 	static const NF9_TEMPLATE(v9Template,
 				  TEST_FLOW_HEADER,
 				  TEST_TEMPLATE_ID,
 				  TEST_ICMP_TYPE_ENTITIES_1);
-
-	static const struct {
-		V9FlowHeader flow_header;
-		struct {
-			V9TemplateHeader flow_set_header;
-			uint8_t buffer[FLOWSET_LEN - sizeof(V9TemplateHeader)];
-		} __attribute__((packed)) flowset[2];
-	} __attribute__((packed)) v9Flow = {
-			// clang-format off
-		.flow_header = {TEST_FLOW_HEADER
-				.version = constexpr_be16toh(9),               \
-				.unix_secs = constexpr_be32toh(1520362144),    \
-				.count = constexpr_be16toh(2),
-  		},
-		.flowset =
-		{
-			{
-				.flow_set_header = {
-					.templateFlowset =
-					    constexpr_be16toh(TEST_TEMPLATE_ID),
-					.flowsetLen =
-						 constexpr_be16toh(FLOWSET_LEN),
-				},
-				.buffer = {
-					TEST_ICMP_TYPE_ENTITIES_1(FLOW_BYTES,
-					                          FLOW_BYTES)
-				}
-			},{
-				.flow_set_header = {
-					.templateFlowset =
-					    constexpr_be16toh(TEST_TEMPLATE_ID),
-					.flowsetLen =
-						 constexpr_be16toh(FLOWSET_LEN),
-				},
-				.buffer = {
-					TEST_ICMP_TYPE_ENTITIES_2(FLOW_BYTES,
-					                          FLOW_BYTES)
-				}
-			}
-		}
-			// clang-format on
-	};
-
-	static const struct checkdata sl1_checkdata[] = {
-			{.size = RD_ARRAYSIZE(checkdata1),
-			 .checks = checkdata1},
-			{.size = RD_ARRAYSIZE(checkdata2),
-			 .checks = checkdata2},
-	};
 
 #define TEST(config_path,                                                      \
 	     mhosts_db_path,                                                   \
@@ -149,7 +95,7 @@ static int prepare_test_firewall_icmp_type(void **state) {
 	}
 
 	// clang-format off
-	static const struct test_params test_params[] = {
+	const struct test_params test_params[] = {
 		TEST("./tests/0000-testFlowV5.json",
 		     "./tests/0009-data/",
 		     &v9Template,
@@ -159,10 +105,10 @@ static int prepare_test_firewall_icmp_type(void **state) {
 
 		TEST(NULL,
 		     NULL,
-		     &v9Flow,
-		     sizeof(v9Flow),
-		     sl1_checkdata,
-		     RD_ARRAYSIZE(sl1_checkdata)),
+		     v9_flow,
+		     v9_flow_size,
+		     checkdata,
+		     checkdata_size),
 	};
 	// clang-format on
 
@@ -170,10 +116,109 @@ static int prepare_test_firewall_icmp_type(void **state) {
 	return *state == NULL;
 }
 
+// Flowset with only one flow
+// clang-format off
+#define ONE_FLOW_FLOWSET(t_template_id, t_entities) {                          \
+	.flow_set_header = {                                                   \
+		.templateFlowset = constexpr_be16toh(t_template_id),           \
+		.flowsetLen = constexpr_be16toh(sizeof(V9TemplateHeader) +     \
+			                        FLOW_BYTES_LENGTH(t_entities)) \
+	},                                                                     \
+	.buffer = {t_entities(FLOW_BYTES, FLOW_BYTES)}                         \
+}
+// clang-format on
+
+// Two flows, each one in it's own flowset
+// Note that entities1 and entities2 MUST be the same length, i.e., to have the
+// same template
+#define FIREWALL_TWO_FLOWS(t_var,                                              \
+			   t_flow_header,                                      \
+			   t_template_id,                                      \
+			   t_entities_1,                                       \
+			   t_entities_2)                                       \
+	struct {                                                               \
+		V9FlowHeader flow_header;                                      \
+		struct {                                                       \
+			V9TemplateHeader flow_set_header;                      \
+			uint8_t buffer[FLOW_BYTES_LENGTH(t_entities_1)];       \
+		} __attribute__((packed)) flowset[2];                          \
+		/* clang-format off */                                         \
+	} __attribute__((packed)) t_var = {                                    \
+		.flow_header = {                                               \
+			.version = constexpr_be16toh(9),                       \
+			.unix_secs = constexpr_be32toh(1520362144),            \
+			.count = constexpr_be16toh(2),                         \
+			t_flow_header                                          \
+		},                                                             \
+		.flowset = {                                                   \
+			ONE_FLOW_FLOWSET(t_template_id, t_entities_1),         \
+			ONE_FLOW_FLOWSET(t_template_id, t_entities_2),         \
+		}                                                              \
+	}
+// clang-format on
+
+static int prepare_test_firewall_icmp_type(void **state) {
+	static const FIREWALL_TWO_FLOWS(it_flow,
+					TEST_FLOW_HEADER,
+					TEST_TEMPLATE_ID,
+					TEST_ICMP_TYPE_ENTITIES_1,
+					TEST_ICMP_TYPE_ENTITIES_2);
+
+	static const struct checkdata_value checkdata1[] =
+			FIREWALL_CHECKDATA(0, 599);
+
+	static const struct checkdata_value checkdata2[] =
+			FIREWALL_CHECKDATA(265, 599);
+
+	static const struct checkdata it_checkdata[] = {
+			{.size = RD_ARRAYSIZE(checkdata1),
+			 .checks = checkdata1},
+			{.size = RD_ARRAYSIZE(checkdata2),
+			 .checks = checkdata2},
+	};
+
+	return prepare_test_firewall_base(&it_flow,
+					  sizeof(it_flow),
+					  it_checkdata,
+					  RD_ARRAYSIZE(it_checkdata),
+					  state);
+}
+
+#define TEST_FLOW_ID_ENTITIES_1(RT, R) TEST_FIREWALL_BASE(RT, R, 0, 0)
+#define TEST_FLOW_ID_ENTITIES_2(RT, R) TEST_FIREWALL_BASE(RT, R, 0, 599)
+static int prepare_test_firewall_flow_id(void **state) {
+	static const FIREWALL_TWO_FLOWS(it_flow,
+					TEST_FLOW_HEADER,
+					TEST_TEMPLATE_ID,
+					TEST_FLOW_ID_ENTITIES_1,
+					TEST_FLOW_ID_ENTITIES_2);
+
+	static const struct checkdata_value checkdata1[] =
+			FIREWALL_CHECKDATA(0, 0);
+
+	static const struct checkdata_value checkdata2[] =
+			FIREWALL_CHECKDATA(0, 599);
+
+	static const struct checkdata it_checkdata[] = {
+			{.size = RD_ARRAYSIZE(checkdata1),
+			 .checks = checkdata1},
+			{.size = RD_ARRAYSIZE(checkdata2),
+			 .checks = checkdata2},
+	};
+
+	return prepare_test_firewall_base(&it_flow,
+					  sizeof(it_flow),
+					  it_checkdata,
+					  RD_ARRAYSIZE(it_checkdata),
+					  state);
+}
+
 int main() {
 	static const struct CMUnitTest tests[] = {
 			cmocka_unit_test_setup(testFlow,
 					       prepare_test_firewall_icmp_type),
+			cmocka_unit_test_setup(testFlow,
+					       prepare_test_firewall_flow_id),
 	};
 
 	return cmocka_run_group_tests(tests, nf_test_setup, nf_test_teardown);
