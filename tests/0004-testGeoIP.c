@@ -302,7 +302,7 @@ static int prepare_tests_v5_ipfix_record(void **state,
 	CHECKDATA_IP_COUNTRY_AS(name, "192.168.1.2", NULL, NULL, NULL)
 
 #define CHECKDATA_2_LEFT(name)                                                 \
-	CHECKDATA_IP_COUNTRY_AS(name, "8.8.8.8", "US", "15169", "Google Inc.")
+	CHECKDATA_IP_COUNTRY_AS(name, "8.8.8.8", "US", "15169", "Google LLC")
 #define CHECKDATA_2_RIGHT(name)                                                \
 	CHECKDATA_IP_COUNTRY_AS(name, "192.168.1.2", NULL, NULL, NULL)
 
