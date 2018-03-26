@@ -113,7 +113,7 @@ tests/%.test: tests/%.o tests/%.objdeps $(TEST_DEPS) $(OBJS)
 	@echo -e '\033[1;32m[Building]\033[0m\t $@'
 	@$(CC) $(CPPFLAGS) $(LDFLAGS) $< $(WRAP_ALLOC_FUNCTIONS) $(shell cat $(@:.test=.objdeps)) $(TEST_DEPS) -o $@ $(LIBS) > /dev/null
 
-get_maxmind_db = wget $(1) -O $@.gz; gunzip $@
+get_maxmind_db = wget -O - $(1) | gunzip -c > $@
 
 tests/asn.dat:
 	$(call get_maxmind_db,http://download.maxmind.com/download/geoip/database/asnum/GeoIPASNum.dat.gz)
