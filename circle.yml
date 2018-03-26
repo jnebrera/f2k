@@ -19,5 +19,6 @@ test:
     - make -j tests/asn.dat tests/asnv6.dat tests/country.dat tests/countryv6.dat
 
   override:
+    - ./tests/circle-test.sh "$CIRCLE_TEST_REPORTS/O2" "--enable-assertions --bootstrap --enable-test-framework --disable-zookeeper --enable-udns"
     - ./tests/circle-test.sh "$CIRCLE_TEST_REPORTS/O2" "--bootstrap --enable-test-framework --disable-zookeeper --enable-udns"
     - ./tests/circle-test.sh "--coverage $CIRCLE_TEST_REPORTS/O0" "--bootstrap --enable-test-framework --disable-zookeeper --enable-udns"

@@ -380,7 +380,7 @@ static int valid_utf8_char(const char *cursor,size_t to_end) {
 size_t append_escaped(struct printbuf *buffer,const char *string,size_t string_len)
 {
   assert(buffer);
-  assert(string);
+  assert(string_len == 0 || string);
 
   static const char *percent         = "%";
   static const char *to_escape_chars = "\"\\/\b\f\n\r\t";

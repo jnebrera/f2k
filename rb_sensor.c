@@ -139,7 +139,7 @@ static int application_id_cmp(const void *aid1, const void *aid2) {
  * @return      app_id->id name_id_description_cmp
  */
 static int selector_id_cmp(const void *sid1, const void *sid2) {
-  return name_id_description_cmp(sid1, sid2, APPLICATION_ID_MAGIC);
+  return name_id_description_cmp(sid1, sid2, SELECTOR_ID_MAGIC);
 }
 
 /**

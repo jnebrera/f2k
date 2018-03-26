@@ -7,7 +7,6 @@ mkl_require socket
 mkl_require gitversion as GITVERSION
 
 mkl_mkvar_append CPPFLAGS CPPFLAGS "-D_GNU_SOURCE -DFORTIFY_SOURCE=2"
-mkl_mkvar_append CPPFLAGS CPPFLAGS "-DNDEBUG"
 #mkl_mkvar_append CPPFLAGS CPPFLAGS "-ftrack-macro-expansion=2 -Wsign-conversion"
 #mkl_mkvar_append CPPFLAGS CPPFLAGS "-Wjump-misses-init" # New in gcc 4.5
 #mkl_mkvar_append CPPFLAGS CPPFLAGS "-Wdouble-promotion" # New in gcc 4.6
@@ -29,6 +28,7 @@ mkl_toggle_option "Feature"  WITH_INTEGRATION_TESTS "--enable-integration-tests"
 mkl_toggle_option "Feature"  WITH_PRINT_BOUND_CHECKS "--enable-export-bounds-chks" "Checks bound in export functions (SLOW!)" "n"
 mkl_toggle_option "Feature"  WITH_COVERAGE           "--enable-coverage"           "Coverage build" "n"
 mkl_toggle_option "Feature"  WITH_TEST_FRAMEWORK     "--enable-test-framework"     "Cmocka+valgrind+xml-coreutils" "n"
+mkl_toggle_option "Feature"  ENABLE_ASSERTIONS       "--enable-assertions"         "Enable assertions macro" "n"
 
 
 LIBRD_COMMIT=bb4ec7e65c8d3d411837e506e8d02f293b9a0a20
@@ -211,8 +211,8 @@ function checks {
         "#include <pfring.h>
          void *f();void *f(){return pfring_open;}"
 
-    if [[ "x$WITHOUT_OPTIMIZATION" != "xy" || "x$WITH_COVERAGE" != "xy" ]]; then
-      mkl_mkvar_append CPPFLAGS CPPFLAGS "-DNDEBUG"
+    if [[ "$ENABLE_ASSERTIONS" != 'y' ]]; then
+        mkl_mkvar_append CPPFLAGS CPPFLAGS "-DNDEBUG"
     fi
 
     if [[ "x$WITH_COVERAGE" != "xn" ]]; then
