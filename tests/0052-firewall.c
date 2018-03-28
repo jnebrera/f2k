@@ -32,6 +32,9 @@
 //    flowsets with 1 flow in each flowset.
 // This also test multiple flowset in the same UDP packet, that only where
 // tested in the case Template+flow(s)
+// firewall export 4 types of templates:
+// No nat information - ipv4 and ipv6
+// with NAT information - ipv4 and ipv6
 
 #define TEST_FLOW_HEADER                                                       \
 	.sys_uptime = constexpr_be32toh(5592000),                              \
@@ -40,27 +43,44 @@
 
 #define TEST_TEMPLATE_ID 256
 
-#define TEST_FIREWALL_BASE(RT, R, t_icmp_type, t_flow_id, t_firewall_event)    \
+#define TEST_FIREWALL_BASE_0(RT, R)                                            \
 	RT(IN_BYTES, 8, 0, UINT64_TO_UINT8_ARR(98))                            \
 	RT(IN_PKTS, 4, 0, UINT32_TO_UINT8_ARR(1))                              \
 	RT(PROTOCOL, 1, 0, 1)                                                  \
 	RT(SRC_TOS, 1, 0, 0)                                                   \
 	RT(TCP_FLAGS, 1, 0, 0x00)                                              \
-	RT(L4_SRC_PORT, 2, 0, 0x00, 0x00)                                      \
-	RT(IPV4_SRC_ADDR, 4, 0, 10, 13, 94, 223)                               \
+	RT(L4_SRC_PORT, 2, 0, 0x00, 0x00)
+
+#define TEST_FIREWALL_BASE_1(RT, R)                                            \
 	RT(INPUT_SNMP, 4, 0, 0x00, 0x00, 0x00, 0x00)                           \
-	RT(L4_DST_PORT, 2, 0, 0x00, 0x00)                                      \
-	RT(IPV4_DST_ADDR, 4, 0, 10, 13, 94, 223)                               \
+	RT(L4_DST_PORT, 2, 0, 0x00, 0x00)
+
+#define TEST_FIREWALL_BASE_2(RT, R, t_icmp_type, t_flow_id, t_fw_event)        \
 	RT(OUTPUT_SNMP, 4, 0, 0x00, 0x00, 0x00, 0x04)                          \
 	RT(FIRST_SWITCHED, 4, 0, UINT32_TO_UINT8_ARR(400000))                  \
 	RT(LAST_SWITCHED, 4, 0, UINT32_TO_UINT8_ARR(400000))                   \
 	RT(ICMP_TYPE, 2, 0, UINT16_TO_UINT8_ARR(t_icmp_type))                  \
 	RT(DIRECTION, 1, 0, 0)                                                 \
 	RT(FLOW_ID, 8, 0, UINT64_TO_UINT8_ARR(t_flow_id))                      \
-	RT(FIREWALL_EVENT, 1, 0, t_firewall_event)
+	RT(FIREWALL_EVENT, 1, 0, t_fw_event)
 
-#define TEST_ICMP_TYPE_ENTITIES_1(RT, R) TEST_FIREWALL_BASE(RT, R, 0, 599, 0)
-#define TEST_ICMP_TYPE_ENTITIES_2(RT, R) TEST_FIREWALL_BASE(RT, R, 265, 599, 0)
+#define TEST_FIREWALL_BASE_IPV4(RT, R, t_icmp_type, t_flow_id, t_fw_event)     \
+	TEST_FIREWALL_BASE_0(RT, R)                                            \
+	RT(IPV4_SRC_ADDR, 4, 0, 10, 13, 94, 223)                               \
+	TEST_FIREWALL_BASE_1(RT, R)                                            \
+	RT(IPV4_DST_ADDR, 4, 0, 10, 13, 94, 223)                               \
+	TEST_FIREWALL_BASE_2(RT, R, t_icmp_type, t_flow_id, t_fw_event)
+
+#define TEST_ICMP_TYPE_ENTITIES_1(RT, R)                                       \
+	TEST_FIREWALL_BASE_IPV4(RT, R, 0, 599, 0)
+#define TEST_ICMP_TYPE_ENTITIES_2(RT, R)                                       \
+	TEST_FIREWALL_BASE_IPV4(RT, R, 265, 599, 0)
+
+// Basic flow template
+static const NF9_TEMPLATE(firewall_base_template,
+			  TEST_FLOW_HEADER,
+			  TEST_TEMPLATE_ID,
+			  TEST_ICMP_TYPE_ENTITIES_1);
 
 #define FIREWALL_CHECKDATA(t_icmp_type, t_flow_id, t_fw_event)                 \
 	{                                                                      \
@@ -70,17 +90,13 @@
 			{.key = "firewall_event", .value = t_fw_event},        \
 	};
 
-static int prepare_test_firewall_base(const void *v9_flow,
+static int prepare_test_firewall_base(const void *v9_template,
+				      size_t v9_template_size,
+				      const void *v9_flow,
 				      size_t v9_flow_size,
 				      const struct checkdata *checkdata,
 				      size_t checkdata_size,
 				      void **state) {
-	// Same template for all tests
-	static const NF9_TEMPLATE(v9Template,
-				  TEST_FLOW_HEADER,
-				  TEST_TEMPLATE_ID,
-				  TEST_ICMP_TYPE_ENTITIES_1);
-
 #define TEST(config_path,                                                      \
 	     mhosts_db_path,                                                   \
 	     mrecord,                                                          \
@@ -99,8 +115,8 @@ static int prepare_test_firewall_base(const void *v9_flow,
 	const struct test_params test_params[] = {
 		TEST("./tests/0000-testFlowV5.json",
 		     "./tests/0009-data/",
-		     &v9Template,
-		     sizeof(v9Template),
+		     v9_template,
+		     v9_template_size,
 		     NULL,
 		     0),
 
@@ -178,15 +194,17 @@ static int prepare_test_firewall_icmp_type(void **state) {
 			 .checks = checkdata2},
 	};
 
-	return prepare_test_firewall_base(&it_flow,
+	return prepare_test_firewall_base(&firewall_base_template,
+					  sizeof(firewall_base_template),
+					  &it_flow,
 					  sizeof(it_flow),
 					  it_checkdata,
 					  RD_ARRAYSIZE(it_checkdata),
 					  state);
 }
 
-#define TEST_FLOW_ID_ENTITIES_1(RT, R) TEST_FIREWALL_BASE(RT, R, 0, 0, 0)
-#define TEST_FLOW_ID_ENTITIES_2(RT, R) TEST_FIREWALL_BASE(RT, R, 0, 599, 0)
+#define TEST_FLOW_ID_ENTITIES_1(RT, R) TEST_FIREWALL_BASE_IPV4(RT, R, 0, 0, 0)
+#define TEST_FLOW_ID_ENTITIES_2(RT, R) TEST_FIREWALL_BASE_IPV4(RT, R, 0, 599, 0)
 static int prepare_test_firewall_flow_id(void **state) {
 	static const FIREWALL_TWO_FLOWS(it_flow,
 					TEST_FLOW_HEADER,
@@ -207,20 +225,29 @@ static int prepare_test_firewall_flow_id(void **state) {
 			 .checks = checkdata2},
 	};
 
-	return prepare_test_firewall_base(&it_flow,
+	return prepare_test_firewall_base(&firewall_base_template,
+					  sizeof(firewall_base_template),
+					  &it_flow,
 					  sizeof(it_flow),
 					  it_checkdata,
 					  RD_ARRAYSIZE(it_checkdata),
 					  state);
 }
 
-#define TEST_FW_EVENT_ZERO_ENTITIES(RT, R) TEST_FIREWALL_BASE(RT, R, 0, 0, 0)
-#define TEST_FW_EVENT_CREATED_ENTITIES(RT, R) TEST_FIREWALL_BASE(RT, R, 0, 0, 1)
-#define TEST_FW_EVENT_DELETED_ENTITIES(RT, R) TEST_FIREWALL_BASE(RT, R, 0, 0, 2)
-#define TEST_FW_EVENT_DENIED_ENTITIES(RT, R) TEST_FIREWALL_BASE(RT, R, 0, 0, 3)
-#define TEST_FW_EVENT_ALERT_ENTITIES(RT, R) TEST_FIREWALL_BASE(RT, R, 0, 0, 4)
-#define TEST_FW_EVENT_UPDATE_ENTITIES(RT, R) TEST_FIREWALL_BASE(RT, R, 0, 0, 5)
-#define TEST_FW_EVENT_INVALID_ENTITIES(RT, R) TEST_FIREWALL_BASE(RT, R, 0, 0, 6)
+#define TEST_FW_EVENT_ZERO_ENTITIES(RT, R)                                     \
+	TEST_FIREWALL_BASE_IPV4(RT, R, 0, 0, 0)
+#define TEST_FW_EVENT_CREATED_ENTITIES(RT, R)                                  \
+	TEST_FIREWALL_BASE_IPV4(RT, R, 0, 0, 1)
+#define TEST_FW_EVENT_DELETED_ENTITIES(RT, R)                                  \
+	TEST_FIREWALL_BASE_IPV4(RT, R, 0, 0, 2)
+#define TEST_FW_EVENT_DENIED_ENTITIES(RT, R)                                   \
+	TEST_FIREWALL_BASE_IPV4(RT, R, 0, 0, 3)
+#define TEST_FW_EVENT_ALERT_ENTITIES(RT, R)                                    \
+	TEST_FIREWALL_BASE_IPV4(RT, R, 0, 0, 4)
+#define TEST_FW_EVENT_UPDATE_ENTITIES(RT, R)                                   \
+	TEST_FIREWALL_BASE_IPV4(RT, R, 0, 0, 5)
+#define TEST_FW_EVENT_INVALID_ENTITIES(RT, R)                                  \
+	TEST_FIREWALL_BASE_IPV4(RT, R, 0, 0, 6)
 static int prepare_test_firewall_fw_event(void **state) {
 	static const struct {
 		V9FlowHeader flow_header;
@@ -291,7 +318,144 @@ static int prepare_test_firewall_fw_event(void **state) {
 			 .checks = checkdata7},
 	};
 
-	return prepare_test_firewall_base(&it_flow,
+	return prepare_test_firewall_base(&firewall_base_template,
+					  sizeof(firewall_base_template),
+					  &it_flow,
+					  sizeof(it_flow),
+					  it_checkdata,
+					  RD_ARRAYSIZE(it_checkdata),
+					  state);
+}
+
+#define TEST_FIREWALL_NAT_PORTS(RT, R, pnat_src_port, pnat_dst_port)           \
+	RT(POST_NAT_SRC_L4_PORT, 2, 0, UINT16_TO_UINT8_ARR(pnat_src_port))     \
+	RT(POST_NAT_DST_L4_PORT, 2, 0, UINT16_TO_UINT8_ARR(pnat_dst_port))
+
+#define NAT_CHECKDATA(t_version,                                               \
+		      t_post_src_addr,                                         \
+		      t_post_dst_addr,                                         \
+		      t_post_src_port,                                         \
+		      t_post_dst_port)                                         \
+	{                                                                      \
+		{.key = "type", .value = "netflowv9"},                         \
+				{.key = "post_nat_src_ipv" t_version "_addr",  \
+				 .value = t_post_src_addr},                    \
+				{.key = "post_nat_dst_ipv" t_version "_addr",  \
+				 .value = t_post_dst_addr},                    \
+				{.key = "post_nat_src_l4_port",                \
+				 .value = t_post_src_port},                    \
+				{.key = "post_nat_dst_l4_port",                \
+				 .value = t_post_dst_port},                    \
+	}
+
+static int prepare_test_firewall_post_nat4(void **state) {
+#define TEST_FIREWALL_NAT_V4_ENTITIES_1(RT, R)                                 \
+	TEST_FIREWALL_BASE_IPV4(RT, R, 0, 10, 0)                               \
+	RT(POST_NAT_SRC_IPV4_ADDR, 4, 0, 0, 0, 0, 0)                           \
+	RT(POST_NAT_DST_IPV4_ADDR, 4, 0, 0, 0, 0, 0)                           \
+	TEST_FIREWALL_NAT_PORTS(RT, R, 0, 0)
+
+#define TEST_FIREWALL_NAT_V4_ENTITIES_2(RT, R)                                 \
+	TEST_FIREWALL_BASE_IPV4(RT, R, 0, 10, 0)                               \
+	RT(POST_NAT_SRC_IPV4_ADDR, 4, 0, 8, 8, 2, 3)                           \
+	RT(POST_NAT_DST_IPV4_ADDR, 4, 0, 8, 8, 4, 4)                           \
+	TEST_FIREWALL_NAT_PORTS(RT, R, 53, 10053)
+
+	static const NF9_TEMPLATE(nat_v4_template,
+				  TEST_FLOW_HEADER,
+				  TEST_TEMPLATE_ID,
+				  TEST_FIREWALL_NAT_V4_ENTITIES_1);
+
+	static const FIREWALL_TWO_FLOWS(it_flow,
+					TEST_FLOW_HEADER,
+					TEST_TEMPLATE_ID,
+					TEST_FIREWALL_NAT_V4_ENTITIES_1,
+					TEST_FIREWALL_NAT_V4_ENTITIES_2);
+
+	static const struct checkdata_value checkdata1[] =
+			NAT_CHECKDATA("4", "0.0.0.0", "0.0.0.0", "0", "0");
+
+	static const struct checkdata_value checkdata2[] =
+			NAT_CHECKDATA("4", "8.8.2.3", "8.8.4.4", "53", "10053");
+
+	static const struct checkdata it_checkdata[] = {
+			{.size = RD_ARRAYSIZE(checkdata1),
+			 .checks = checkdata1},
+			{.size = RD_ARRAYSIZE(checkdata2),
+			 .checks = checkdata2},
+	};
+
+	return prepare_test_firewall_base(&nat_v4_template,
+					  sizeof(nat_v4_template),
+					  &it_flow,
+					  sizeof(it_flow),
+					  it_checkdata,
+					  RD_ARRAYSIZE(it_checkdata),
+					  state);
+}
+
+static int prepare_test_firewall_post_nat6(void **state) {
+// clang-format off
+#define TEST_FIREWALL_NAT_V6_ENTITIES_1(RT, R)                                 \
+	TEST_FIREWALL_BASE_IPV4(RT, R, 0, 10, 0)                               \
+	RT(POST_NAT_SRC_IPV6_ADDR, 16, 0, 0, 0, 0, 0,                         \
+		                          0, 0, 0, 0,                         \
+		                          0, 0, 0, 0,                         \
+		                          0, 0, 0, 0)                         \
+	RT(POST_NAT_DST_IPV6_ADDR, 16, 0, 0, 0, 0, 0,                         \
+		                          0, 0, 0, 0,                         \
+		                          0, 0, 0, 0,                         \
+		                          0, 0, 0, 0)                         \
+	TEST_FIREWALL_NAT_PORTS(RT, R, 0, 0)
+
+#define TEST_FIREWALL_NAT_V6_ENTITIES_2(RT, R)                                 \
+	TEST_FIREWALL_BASE_IPV4(RT, R, 0, 10, 0)                               \
+	RT(POST_NAT_SRC_IPV6_ADDR, 16, 0, 0x20, 0x01, 0x0d, 0xb8,             \
+		                          0x0a, 0x0b, 0x12, 0xf0,             \
+		                          0x00, 0x00, 0x00, 0x00,             \
+		                          0x00, 0x00, 0x00, 0x01)             \
+	RT(POST_NAT_DST_IPV6_ADDR, 16, 0, 0x20, 0x01, 0x0d, 0xb8,             \
+		                          0x0a, 0x0b, 0x12, 0xf0,             \
+		                          0x00, 0x00, 0x00, 0x00,             \
+		                          0x00, 0x00, 0x00, 0x02)             \
+	TEST_FIREWALL_NAT_PORTS(RT, R, 53, 10053)
+	// clang-format on
+
+	static const NF9_TEMPLATE(nat_v6_template,
+				  TEST_FLOW_HEADER,
+				  TEST_TEMPLATE_ID,
+				  TEST_FIREWALL_NAT_V6_ENTITIES_1);
+
+	static const FIREWALL_TWO_FLOWS(it_flow,
+					TEST_FLOW_HEADER,
+					TEST_TEMPLATE_ID,
+					TEST_FIREWALL_NAT_V6_ENTITIES_1,
+					TEST_FIREWALL_NAT_V6_ENTITIES_2);
+
+	static const struct checkdata_value checkdata1[] =
+			NAT_CHECKDATA("6",
+				      "0000:0000:0000:0000:0000:0000:0000:0000",
+				      "0000:0000:0000:0000:0000:0000:0000:0000",
+				      "0",
+				      "0");
+
+	static const struct checkdata_value checkdata2[] =
+			NAT_CHECKDATA("6",
+				      "2001:0db8:0a0b:12f0:0000:0000:0000:0001",
+				      "2001:0db8:0a0b:12f0:0000:0000:0000:0002",
+				      "53",
+				      "10053");
+
+	static const struct checkdata it_checkdata[] = {
+			{.size = RD_ARRAYSIZE(checkdata1),
+			 .checks = checkdata1},
+			{.size = RD_ARRAYSIZE(checkdata2),
+			 .checks = checkdata2},
+	};
+
+	return prepare_test_firewall_base(&nat_v6_template,
+					  sizeof(nat_v6_template),
+					  &it_flow,
 					  sizeof(it_flow),
 					  it_checkdata,
 					  RD_ARRAYSIZE(it_checkdata),
@@ -306,6 +470,10 @@ int main() {
 					       prepare_test_firewall_flow_id),
 			cmocka_unit_test_setup(testFlow,
 					       prepare_test_firewall_fw_event),
+			cmocka_unit_test_setup(testFlow,
+					       prepare_test_firewall_post_nat4),
+			cmocka_unit_test_setup(testFlow,
+					       prepare_test_firewall_post_nat6),
 	};
 
 	return cmocka_run_group_tests(tests, nf_test_setup, nf_test_teardown);

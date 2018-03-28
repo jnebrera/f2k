@@ -232,11 +232,17 @@ const char* getStandardFieldId(size_t id);
 	X(STANDARD_ENTERPRISE_ID, FLOW_END_MILLISECONDS, 153, DONT_QUOTE_OUTPUT, "FLOW_END_MILLISECONDS", "flow_end_milliseconds",  "flowEndMilliseconds",  "Msec (epoch) of the last flow packet",save_last_msecond, NO_CHILDS)\
 	X(STANDARD_ENTERPRISE_ID, PADDING_OCTETS, 210, DONT_QUOTE_OUTPUT, "PADDING_OCTETS", "padding", "padding", "Padding", NO_FN, NO_CHILDS)\
 	X(STANDARD_ENTERPRISE_ID, FIREWALL_EVENT, 233, QUOTE_OUTPUT, "FIREWALL_EVENT", "firewall_event", "firewall_event", "Flow firewall event (created, deleted, denied...)", print_firewall_event, NO_CHILDS)\
+	X(STANDARD_ENTERPRISE_ID, POST_NAT_SRC_IPV4_ADDR, 225, QUOTE_OUTPUT, "POST_NAT_SRC_IPV4_ADDR", "post_nat_src_ipv4_addr", "post_nat_src_ipv4_addr", "After NAT source IP address", print_ipv4_addr, NO_CHILDS)\
+	X(STANDARD_ENTERPRISE_ID, POST_NAT_DST_IPV4_ADDR, 226, QUOTE_OUTPUT, "POST_NAT_DST_IPV4_ADDR", "post_nat_dst_ipv4_addr", "post_nat_dst_ipv4_addr", "After NAT destination IP address", print_ipv4_addr, NO_CHILDS)\
+	X(STANDARD_ENTERPRISE_ID, POST_NAT_SRC_L4_PORT, 227, DONT_QUOTE_OUTPUT, "POST_NAT_SRC_L4_PORT", "post_nat_src_l4_port", "post_nat_src_l4_port", "After NAT source L4 port", print_number, NO_CHILDS)\
+	X(STANDARD_ENTERPRISE_ID, POST_NAT_DST_L4_PORT, 228, DONT_QUOTE_OUTPUT, "POST_NAT_DST_L4_PORT", "post_nat_dst_l4_port", "post_nat_dst_l4_port", "After NAT destination L4 port", print_number, NO_CHILDS)\
 	X(STANDARD_ENTERPRISE_ID, INGRESS_VRFID, 234, DONT_QUOTE_OUTPUT, "INGRESS_VRFID", "input_vrf", "ingressVRFID", "Ingress Virtual Routing&Forwarding Interface ID",print_number, NO_CHILDS)\
 	X(STANDARD_ENTERPRISE_ID, EGRESS_VRFID, 235, DONT_QUOTE_OUTPUT, "EGRESS_VRFID", "output_vrf", "egressVRFID", "Egress Virtual Routing&Forwarding Interface ID",print_number, NO_CHILDS)\
 	X(STANDARD_ENTERPRISE_ID, BIFLOW_DIRECTION, 239, QUOTE_OUTPUT, "BIFLOW_DIRECTION", "biflow_direction",  "biflow_direction",  "1=initiator, 2=reverseInitiator", print_biflow_direction, NO_CHILDS)\
 	X(STANDARD_ENTERPRISE_ID, OBSERVATION_POINT_TYPE, 277, DONT_QUOTE_OUTPUT, "OBSERVATION_POINT_TYPE", "observation_point_type", "<reserved>", "Observation point type",NO_FN, NO_CHILDS)\
 	X(STANDARD_ENTERPRISE_ID, TRANSACTION_ID, 280, DONT_QUOTE_OUTPUT, "TRANSACTION_ID", "transaction_id", "<reserved>", "Transaction id", print_number, NO_CHILDS)\
+	X(STANDARD_ENTERPRISE_ID, POST_NAT_SRC_IPV6_ADDR, 281, QUOTE_OUTPUT, "POST_NAT_SRC_IPV6_ADDR", "post_nat_src_ipv6_addr", "post_nat_src_ipv6_addr", "After NAT source IP address", print_ipv6_addr, NO_CHILDS)\
+	X(STANDARD_ENTERPRISE_ID, POST_NAT_DST_IPV6_ADDR, 282, QUOTE_OUTPUT, "POST_NAT_DST_IPV6_ADDR", "post_nat_dst_ipv6_addr", "post_nat_dst_ipv6_addr", "After NAT destination IP address", print_ipv6_addr, NO_CHILDS)\
 	X(STANDARD_ENTERPRISE_ID, OBSERVATION_POINT_ID, 300, DONT_QUOTE_OUTPUT, "OBSERVATION_POINT_ID", "observation_point_id", "<reserved>", "Observation point id",NO_FN,NO_CHILDS)\
 	X(STANDARD_ENTERPRISE_ID, SELECTOR_ID, 302, DONT_QUOTE_OUTPUT, "SELECTOR_ID", "selector_id", "<reserved>", "Selector id", print_number, SELECTOR_NAME)\
 	X(STANDARD_ENTERPRISE_ID, IPFIX_SAMPLING_ALGORITHM, 304, DONT_QUOTE_OUTPUT, "IPFIX_SAMPLING_ALGORITHM", "ipfix_sampling_algorithm", "<reserved>", "Sampling algorithm",NO_FN,NO_CHILDS)\

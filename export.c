@@ -775,9 +775,23 @@ static size_t print_ipv6_addr0(struct printbuf *kafka_line_buffer,
   return strlen("ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff");
 }
 
-static size_t print_ipv4_addr(struct printbuf *kafka_line_buffer,
+size_t print_ipv6_addr(struct printbuf *kafka_line_buffer,
     const void *vbuffer, const size_t real_field_len,
-    const struct flowCache *flow_cache) {
+    struct flowCache *flow_cache) {
+
+  (void)flow_cache;
+
+  if (unlikely(16 != real_field_len)) {
+    traceEvent(TRACE_ERROR, "IPv6 real field len %zu != 16", real_field_len);
+    return 0;
+  }
+
+  return print_ipv6_addr0(kafka_line_buffer, vbuffer);
+}
+
+size_t print_ipv4_addr(struct printbuf *kafka_line_buffer,
+    const void *vbuffer, const size_t real_field_len,
+    struct flowCache *flow_cache) {
   const char *buffer = vbuffer;
   (void)flow_cache;
   assert_multi(kafka_line_buffer, buffer);
