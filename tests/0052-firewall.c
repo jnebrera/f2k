@@ -462,6 +462,77 @@ static int prepare_test_firewall_post_nat6(void **state) {
 					  state);
 }
 
+static int prepare_test_firewall_appid_username(void **state) {
+
+	// Note that app_id and username are fixed length, so provided buffers
+	// needs to be that way
+#define TEST_FIREWALL_APPID_USERNAME_ENTITIES(RT, R, app_id, username)         \
+	TEST_FIREWALL_BASE_IPV4(RT, R, 0, 10, 0)                               \
+	RT(346 /*Enterprise private number */,                                 \
+	   4,                                                                  \
+	   0,                                                                  \
+	   UINT32_TO_UINT8_ARR(25461))                                         \
+	RT(PALOALTO_APP_ID, 32, 0, app_id)                                     \
+	RT(PALOALTO_USERNAME, 64, 0, username)
+
+// clang-format off
+#define ZERO16 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+#define ZERO_APP_ID ZERO16, ZERO16
+#define ZERO_USERNAME ZERO_APP_ID, ZERO_APP_ID
+
+#define DNS_APP_ID 'd', 'n', 's', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ZERO16
+
+#define USER1_USERNAME 'u', 's', 'e', 'r', '1', 0, 0, 0, \
+	               0, 0, 0, 0, 0, 0, 0, 0, ZERO16, ZERO16, ZERO16
+	// clang-format on
+
+#define TEST_FIREWALL_APPID_USERNAME_ENTITIES_1(RT, R)                         \
+	TEST_FIREWALL_APPID_USERNAME_ENTITIES(RT, R, ZERO_APP_ID, ZERO_USERNAME)
+
+#define TEST_FIREWALL_APPID_USERNAME_ENTITIES_2(RT, R)                         \
+	TEST_FIREWALL_APPID_USERNAME_ENTITIES(RT, R, DNS_APP_ID, USER1_USERNAME)
+
+#define APPID_USERNAME_CHECKDATA(t_checkdata, t_username)                      \
+	{                                                                      \
+		{.key = "type", .value = "netflowv9"},                         \
+				{.key = "app_id_name", .value = t_checkdata},  \
+				{.key = "user", .value = t_username},      \
+	}
+
+	static const NF9_TEMPLATE(v9_template,
+				  TEST_FLOW_HEADER,
+				  TEST_TEMPLATE_ID,
+				  TEST_FIREWALL_APPID_USERNAME_ENTITIES_1);
+
+	static const FIREWALL_TWO_FLOWS(
+			v9_flow,
+			TEST_FLOW_HEADER,
+			TEST_TEMPLATE_ID,
+			TEST_FIREWALL_APPID_USERNAME_ENTITIES_1,
+			TEST_FIREWALL_APPID_USERNAME_ENTITIES_2);
+
+	static const struct checkdata_value checkdata1[] =
+			APPID_USERNAME_CHECKDATA(NULL, NULL);
+
+	static const struct checkdata_value checkdata2[] =
+			APPID_USERNAME_CHECKDATA("dns", "user1");
+
+	static const struct checkdata it_checkdata[] = {
+			{.size = RD_ARRAYSIZE(checkdata1),
+			 .checks = checkdata1},
+			{.size = RD_ARRAYSIZE(checkdata2),
+			 .checks = checkdata2},
+	};
+
+	return prepare_test_firewall_base(&v9_template,
+					  sizeof(v9_template),
+					  &v9_flow,
+					  sizeof(v9_flow),
+					  it_checkdata,
+					  RD_ARRAYSIZE(it_checkdata),
+					  state);
+}
+
 int main() {
 	static const struct CMUnitTest tests[] = {
 			cmocka_unit_test_setup(testFlow,
@@ -474,6 +545,8 @@ int main() {
 					       prepare_test_firewall_post_nat4),
 			cmocka_unit_test_setup(testFlow,
 					       prepare_test_firewall_post_nat6),
+		cmocka_unit_test_setup(testFlow,
+				       prepare_test_firewall_appid_username),
 	};
 
 	return cmocka_run_group_tests(tests, nf_test_setup, nf_test_teardown);

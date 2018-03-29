@@ -326,6 +326,8 @@ const char* getStandardFieldId(size_t id);
 	X(CISCO_ENTERPRISE_ID, STA_IPV4_ADDRESS_NET, PRIVATE_ENTITY_ID, QUOTE_OUTPUT, "STA_IPV4_NET", "lan_ip_net", "STA_IPV4_NET", "Wireless station IP address", print_net, STA_IPV4_ADDRESS_NET_NAME)\
 	X(CISCO_ENTERPRISE_ID, STA_IPV4_ADDRESS_NET_NAME, PRIVATE_ENTITY_ID, QUOTE_OUTPUT, "STA_IPV4_NET_NAME", "lan_ip_net_name", "STA_IPV4_NET", "Wireless station IP address", print_net_name, NO_CHILDS)\
 	X(CISCO_ENTERPRISE_ID, WAP_MAC_ADDRESS, 367, QUOTE_OUTPUT, "WAP_MAC_ADDRESS", "wireless_station", "devMacAddr", "Device MAC Address",print_mac, NO_CHILDS)\
+	X(PALOALTO_ENTERPRISE_ID, PALOALTO_APP_ID, (56701 & 0x7fff), QUOTE_OUTPUT, "PALOALTO_APP_ID", "app_id_name", "Application ID", "Application ID", print_string, NO_CHILDS)\
+	X(PALOALTO_ENTERPRISE_ID, PALOALTO_USERNAME, (56702 & 0x7fff), QUOTE_OUTPUT, "PALOALTO_USERNAME", "username", "User Name", "User name", NO_FN, C(USERNAME))\
 	X(STANDARD_ENTERPRISE_ID, REDBORDER_TYPE, PRIVATE_ENTITY_ID, QUOTE_OUTPUT, "REDBORDER_TYPE", "type", "type", "Redborder internal flowtype (currenly, netflow version)" ,print_netflow_type, NO_CHILDS)\
 	X(STANDARD_ENTERPRISE_ID, FLOW_SEQUENCE, PRIVATE_ENTITY_ID, QUOTE_OUTPUT, "FLOW_SEQUENCE", "flow_sequence", "flow_sequence", "flow sequence number" ,print_number, NO_CHILDS)\
 	X_UDNS \

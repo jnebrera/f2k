@@ -183,7 +183,8 @@ size_t print_string(struct printbuf *kafka_line_buffer,
   unused_params(flowCache);
 
   const size_t bef_len = kafka_line_buffer->bpos;
-  printbuf_memappend_fast(kafka_line_buffer, buffer, real_field_len);
+  printbuf_memappend_fast(
+                   kafka_line_buffer, buffer, strnlen(vbuffer, real_field_len));
   return kafka_line_buffer->bpos - bef_len;
 }
 
