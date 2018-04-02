@@ -155,11 +155,11 @@ coverage-html: coverage
 	genhtml --branch-coverage ${COVERAGE_INFO} --output-directory \
 				${COVERAGE_OUTPUT_DIRECTORY} > coverage.out
 
-dev-docker:
-	@docker build $(DOCKER_BUILD_PARAMETERS) docker/devel
+dev-docker: docker/Dockerfile
+	@docker build --target f2k-dev $(DOCKER_BUILD_PARAMETERS) -f docker/Dockerfile .
 
 # TODO add $(BIN)
-release-docker:
-	@docker build $(DOCKER_BUILD_PARAMETERS) -f docker/release/Dockerfile .
+release-docker: docker/Dockerfile
+	@docker build $(DOCKER_BUILD_PARAMETERS) -f docker/Dockerfile .
 
 -include $(DEPS)

@@ -60,7 +60,7 @@ jobs:
       - *restore_cache
       - *load_docker_images
       # Create development environment
-      - run: apk add --no-cache make m4
+      - run: apk add --no-cache make
       - run:
           environment:
             DOCKER_BUILD_PARAMETERS: -t f2k-dev
@@ -124,6 +124,7 @@ jobs:
           ./configure --bootstrap --enable-test-framework --disable-zookeeper --enable-udns
           make
           make checks
+          make memchecks
 
 workflows:
   version: 2
