@@ -35,6 +35,7 @@
 // firewall export 4 types of templates:
 // No nat information - ipv4 and ipv6
 // with NAT information - ipv4 and ipv6
+// Testing also forwarding status ipfix entity
 
 #define TEST_FLOW_HEADER                                                       \
 	.sys_uptime = constexpr_be32toh(5592000),                              \
@@ -496,7 +497,7 @@ static int prepare_test_firewall_appid_username(void **state) {
 	{                                                                      \
 		{.key = "type", .value = "netflowv9"},                         \
 				{.key = "app_id_name", .value = t_checkdata},  \
-				{.key = "user", .value = t_username},      \
+				{.key = "user", .value = t_username},          \
 	}
 
 	static const NF9_TEMPLATE(v9_template,
@@ -533,6 +534,256 @@ static int prepare_test_firewall_appid_username(void **state) {
 					  state);
 }
 
+static int prepare_test_forwarding_status(void **state) {
+#define NF9_FORWARDING_STATUS_ENTITIES_0(RT, R, t_forward_status)              \
+	TEST_FIREWALL_BASE_IPV4(RT, R, 0, 1020, 0)                             \
+	RT(FORWARDING_STATUS, 1, 0, t_forward_status)
+
+#define NF9_FORWARDING_STATUS_ENTITIES_TEMPLATE(RT, R)                         \
+	NF9_FORWARDING_STATUS_ENTITIES_0(RT, R, 0)
+
+#define NF9_FORWARDING_STATUS_ENTITIES_UNKNOWN(RT, R)                          \
+	NF9_FORWARDING_STATUS_ENTITIES_0(RT, R, 0)                             \
+	NF9_FORWARDING_STATUS_ENTITIES_0(RT, R, 1)    /* Invalid */            \
+	NF9_FORWARDING_STATUS_ENTITIES_0(RT, R, 0x3f) /* Invalid "negative" */
+
+#define NF9_FORWARDING_STATUS_ENTITIES_FORWARDED(RT, R)                        \
+	NF9_FORWARDING_STATUS_ENTITIES_0(RT, R, 0x40) /* Unknown */            \
+	NF9_FORWARDING_STATUS_ENTITIES_0(RT, R, 0x41) /* Fragmented */         \
+	NF9_FORWARDING_STATUS_ENTITIES_0(RT, R, 0x42) /* Not Fragmented */     \
+	NF9_FORWARDING_STATUS_ENTITIES_0(RT, R, 0x43) /* Tunneled */           \
+	NF9_FORWARDING_STATUS_ENTITIES_0(RT, R, 0x44) /* Invalid */            \
+	NF9_FORWARDING_STATUS_ENTITIES_0(RT, R, 0x7f) /* "Invalid negative" */
+
+#define NF9_FORWARDING_STATUS_ENTITIES_DROPPED_0(RT, R)                        \
+	NF9_FORWARDING_STATUS_ENTITIES_0(RT, R, 0x80) /* Unknown */            \
+	NF9_FORWARDING_STATUS_ENTITIES_0(RT, R, 0x81) /* ACL deny */           \
+	NF9_FORWARDING_STATUS_ENTITIES_0(RT, R, 0x82) /* ACL drop */           \
+	NF9_FORWARDING_STATUS_ENTITIES_0(RT, R, 0x83) /* Unroutable */         \
+	NF9_FORWARDING_STATUS_ENTITIES_0(RT, R, 0x84) /* Adjacency */          \
+	NF9_FORWARDING_STATUS_ENTITIES_0(RT, R, 0x85) /* Fragmentation and DF  \
+							 set */                \
+	NF9_FORWARDING_STATUS_ENTITIES_0(RT, R, 0x86) /* Bad header checksum   \
+						       */                      \
+	NF9_FORWARDING_STATUS_ENTITIES_0(RT, R, 0x87) /* Bad total Length */   \
+	NF9_FORWARDING_STATUS_ENTITIES_0(RT, R, 0x88) /* Bad header length */
+
+#define NF9_FORWARDING_STATUS_ENTITIES_DROPPED_1(RT, R)                        \
+	NF9_FORWARDING_STATUS_ENTITIES_0(RT, R, 0x89) /* bad TTL */            \
+	NF9_FORWARDING_STATUS_ENTITIES_0(RT, R, 0x8A) /* Policer */            \
+	NF9_FORWARDING_STATUS_ENTITIES_0(RT, R, 0x8B) /* WRED */               \
+	NF9_FORWARDING_STATUS_ENTITIES_0(RT, R, 0x8C) /* RPF */                \
+	NF9_FORWARDING_STATUS_ENTITIES_0(RT, R, 0x8D) /* For us */             \
+	NF9_FORWARDING_STATUS_ENTITIES_0(RT, R, 0x8E) /* Bad output interface  \
+						       */                      \
+	NF9_FORWARDING_STATUS_ENTITIES_0(RT, R, 0x8F) /* Hardware */           \
+	NF9_FORWARDING_STATUS_ENTITIES_0(RT, R, 0x90) /* Invalid */            \
+	NF9_FORWARDING_STATUS_ENTITIES_0(RT, R, 0xbf) /* Invalid "negative" */
+
+#define NF9_FORWARDING_STATUS_ENTITIES_CONSUMED(RT, R)                         \
+	NF9_FORWARDING_STATUS_ENTITIES_0(RT, R, 0xC0) /* Unknown */            \
+	NF9_FORWARDING_STATUS_ENTITIES_0(RT, R, 0xC1) /* Punt Adjacency */     \
+	NF9_FORWARDING_STATUS_ENTITIES_0(RT, R, 0xC2) /* Incomplete Adjacency  \
+						       */                      \
+	NF9_FORWARDING_STATUS_ENTITIES_0(RT, R, 0xC3) /* For us */             \
+	NF9_FORWARDING_STATUS_ENTITIES_0(RT, R, 0xC4) /* Invalid */            \
+	NF9_FORWARDING_STATUS_ENTITIES_0(RT, R, 0xFF) /* Invalid negative */
+
+#define FORWARDING_STATUS_CHECKDATA_VALUES(t_forward_status,                   \
+					   t_forward_status_reason)            \
+	{                                                                      \
+		{.key = "forwarding_status", .value = t_forward_status},       \
+				{.key = "forwarding_status_reason",            \
+				 .value = t_forward_status_reason},            \
+	}
+#define FORWARDING_STATUS_CHECKDATA(t_check)                                   \
+	{ .size = 2, .checks = t_check }
+
+	static const NF9_TEMPLATE(forwarding_status_template,
+				  TEST_FLOW_HEADER,
+				  TEST_TEMPLATE_ID,
+				  NF9_FORWARDING_STATUS_ENTITIES_TEMPLATE);
+
+	// Don't use one flow per flowset in this template anymore
+	static const NF9_FLOW(unknown_forwarding_status_flow,
+			      TEST_FLOW_HEADER,
+			      TEST_TEMPLATE_ID,
+			      NF9_FORWARDING_STATUS_ENTITIES_UNKNOWN);
+
+	static const struct checkdata_value unknown_checkdata_values[] =
+			FORWARDING_STATUS_CHECKDATA_VALUES("Unknown", NULL);
+
+	static const struct checkdata unknown_checkdata[] = {
+			FORWARDING_STATUS_CHECKDATA(unknown_checkdata_values),
+			FORWARDING_STATUS_CHECKDATA(unknown_checkdata_values),
+			FORWARDING_STATUS_CHECKDATA(unknown_checkdata_values),
+	};
+
+	static const NF9_FLOW(forwarded_forwarding_status_flow,
+			      TEST_FLOW_HEADER,
+			      TEST_TEMPLATE_ID,
+			      NF9_FORWARDING_STATUS_ENTITIES_FORWARDED);
+
+	// clang-format off
+	static const struct checkdata_value forwarded_checkdata_values[][2] = {
+		FORWARDING_STATUS_CHECKDATA_VALUES("Forwarded", "Unknown"),
+		FORWARDING_STATUS_CHECKDATA_VALUES("Forwarded", "Fragmented"),
+		FORWARDING_STATUS_CHECKDATA_VALUES(
+						  "Forwarded","Not fragmented"),
+		FORWARDING_STATUS_CHECKDATA_VALUES("Forwarded", "Tunneled"),
+		FORWARDING_STATUS_CHECKDATA_VALUES("Forwarded", "68"),
+		FORWARDING_STATUS_CHECKDATA_VALUES("Forwarded", "127"),
+	};
+
+	static const struct checkdata forwarded_checkdata[] = {
+		FORWARDING_STATUS_CHECKDATA(forwarded_checkdata_values[0]),
+		FORWARDING_STATUS_CHECKDATA(forwarded_checkdata_values[1]),
+		FORWARDING_STATUS_CHECKDATA(forwarded_checkdata_values[2]),
+		FORWARDING_STATUS_CHECKDATA(forwarded_checkdata_values[3]),
+		FORWARDING_STATUS_CHECKDATA(forwarded_checkdata_values[4]),
+		FORWARDING_STATUS_CHECKDATA(forwarded_checkdata_values[5]),
+	};
+	// clang-format on
+
+	static const NF9_FLOW(dropped_0_forwarding_status_flow,
+			      TEST_FLOW_HEADER,
+			      TEST_TEMPLATE_ID,
+			      NF9_FORWARDING_STATUS_ENTITIES_DROPPED_0);
+
+	static const NF9_FLOW(dropped_1_forwarding_status_flow,
+			      TEST_FLOW_HEADER,
+			      TEST_TEMPLATE_ID,
+			      NF9_FORWARDING_STATUS_ENTITIES_DROPPED_1);
+
+	// clang-format off
+	static const struct checkdata_value dropped_checkdata_values[][2] = {
+		FORWARDING_STATUS_CHECKDATA_VALUES("Dropped", "Unknown"),
+		FORWARDING_STATUS_CHECKDATA_VALUES("Dropped", "ACL deny"),
+		FORWARDING_STATUS_CHECKDATA_VALUES("Dropped", "ACL drop"),
+		FORWARDING_STATUS_CHECKDATA_VALUES("Dropped", "Unroutable"),
+		FORWARDING_STATUS_CHECKDATA_VALUES("Dropped", "Adjacency"),
+		FORWARDING_STATUS_CHECKDATA_VALUES(
+					 "Dropped", "Fragmentation and DF set"),
+		FORWARDING_STATUS_CHECKDATA_VALUES(
+					 "Dropped", "Bad header checksum"),
+		FORWARDING_STATUS_CHECKDATA_VALUES(
+					 "Dropped", "Bad total length"),
+		FORWARDING_STATUS_CHECKDATA_VALUES(
+					 "Dropped", "Bad header length"),
+		FORWARDING_STATUS_CHECKDATA_VALUES("Dropped", "Bad TTL"),
+		FORWARDING_STATUS_CHECKDATA_VALUES("Dropped", "Policer"),
+		FORWARDING_STATUS_CHECKDATA_VALUES("Dropped", "WRED"),
+		FORWARDING_STATUS_CHECKDATA_VALUES("Dropped", "RPF"),
+		FORWARDING_STATUS_CHECKDATA_VALUES("Dropped", "For us"),
+		FORWARDING_STATUS_CHECKDATA_VALUES(
+			                     "Dropped", "Bad output interface"),
+		FORWARDING_STATUS_CHECKDATA_VALUES("Dropped", "Hardware"),
+		FORWARDING_STATUS_CHECKDATA_VALUES("Dropped", "144"),
+		FORWARDING_STATUS_CHECKDATA_VALUES("Dropped", "191"),
+	};
+
+	static const struct checkdata dropped_checkdata_0[] = {
+		FORWARDING_STATUS_CHECKDATA(dropped_checkdata_values[0]),
+		FORWARDING_STATUS_CHECKDATA(dropped_checkdata_values[1]),
+		FORWARDING_STATUS_CHECKDATA(dropped_checkdata_values[2]),
+		FORWARDING_STATUS_CHECKDATA(dropped_checkdata_values[3]),
+		FORWARDING_STATUS_CHECKDATA(dropped_checkdata_values[4]),
+		FORWARDING_STATUS_CHECKDATA(dropped_checkdata_values[5]),
+		FORWARDING_STATUS_CHECKDATA(dropped_checkdata_values[6]),
+		FORWARDING_STATUS_CHECKDATA(dropped_checkdata_values[7]),
+		FORWARDING_STATUS_CHECKDATA(dropped_checkdata_values[8]),
+	};
+
+	static const struct checkdata dropped_checkdata_1[] = {
+		FORWARDING_STATUS_CHECKDATA(dropped_checkdata_values[9]),
+		FORWARDING_STATUS_CHECKDATA(dropped_checkdata_values[10]),
+		FORWARDING_STATUS_CHECKDATA(dropped_checkdata_values[11]),
+		FORWARDING_STATUS_CHECKDATA(dropped_checkdata_values[12]),
+		FORWARDING_STATUS_CHECKDATA(dropped_checkdata_values[13]),
+		FORWARDING_STATUS_CHECKDATA(dropped_checkdata_values[14]),
+		FORWARDING_STATUS_CHECKDATA(dropped_checkdata_values[15]),
+		FORWARDING_STATUS_CHECKDATA(dropped_checkdata_values[16]),
+		FORWARDING_STATUS_CHECKDATA(dropped_checkdata_values[17]),
+	};
+	// clang-format on
+
+	static const NF9_FLOW(consumed_forwarding_status_flow,
+			      TEST_FLOW_HEADER,
+			      TEST_TEMPLATE_ID,
+			      NF9_FORWARDING_STATUS_ENTITIES_CONSUMED);
+
+	// clang-format off
+	static const struct checkdata_value consumed_checkdata_values[][2] = {
+		FORWARDING_STATUS_CHECKDATA_VALUES("Consumed", "Unknown"),
+		FORWARDING_STATUS_CHECKDATA_VALUES("Consumed",
+						   "Punt adjacency"),
+		FORWARDING_STATUS_CHECKDATA_VALUES(
+					"Consumed", "Incomplete adjacency"),
+		FORWARDING_STATUS_CHECKDATA_VALUES("Consumed", "For us"),
+		FORWARDING_STATUS_CHECKDATA_VALUES("Consumed", "196"),
+		FORWARDING_STATUS_CHECKDATA_VALUES("Consumed", "255"),
+	};
+
+	static const struct checkdata consumed_checkdata[] = {
+		FORWARDING_STATUS_CHECKDATA(consumed_checkdata_values[0]),
+		FORWARDING_STATUS_CHECKDATA(consumed_checkdata_values[1]),
+		FORWARDING_STATUS_CHECKDATA(consumed_checkdata_values[2]),
+		FORWARDING_STATUS_CHECKDATA(consumed_checkdata_values[3]),
+		FORWARDING_STATUS_CHECKDATA(consumed_checkdata_values[4]),
+		FORWARDING_STATUS_CHECKDATA(consumed_checkdata_values[5]),
+	};
+	// clang-format on
+
+	// clang-format off
+	const struct test_params test_params[] = {
+		TEST("./tests/0000-testFlowV5.json",
+		     "./tests/0009-data/",
+		     &forwarding_status_template,
+		     sizeof(forwarding_status_template),
+		     NULL,
+		     0),
+
+		TEST(NULL,
+		     NULL,
+		     &unknown_forwarding_status_flow,
+		     sizeof(unknown_forwarding_status_flow),
+		     unknown_checkdata,
+		     RD_ARRAYSIZE(unknown_checkdata)),
+
+		TEST(NULL,
+		     NULL,
+		     &forwarded_forwarding_status_flow,
+		     sizeof(forwarded_forwarding_status_flow),
+		     forwarded_checkdata,
+		     RD_ARRAYSIZE(forwarded_checkdata)),
+
+		TEST(NULL,
+		     NULL,
+		     &dropped_0_forwarding_status_flow,
+		     sizeof(dropped_0_forwarding_status_flow),
+		     dropped_checkdata_0,
+		     RD_ARRAYSIZE(dropped_checkdata_0)),
+
+		TEST(NULL,
+		     NULL,
+		     &dropped_1_forwarding_status_flow,
+		     sizeof(dropped_1_forwarding_status_flow),
+		     dropped_checkdata_1,
+		     RD_ARRAYSIZE(dropped_checkdata_1)),
+
+		TEST(NULL,
+		     NULL,
+		     &consumed_forwarding_status_flow,
+		     sizeof(consumed_forwarding_status_flow),
+		     consumed_checkdata,
+		     RD_ARRAYSIZE(consumed_checkdata)),
+	};
+	// clang-format on
+
+	*state = prepare_tests(test_params, RD_ARRAYSIZE(test_params));
+	return *state == NULL;
+}
+
 int main() {
 	static const struct CMUnitTest tests[] = {
 			cmocka_unit_test_setup(testFlow,
@@ -545,8 +796,11 @@ int main() {
 					       prepare_test_firewall_post_nat4),
 			cmocka_unit_test_setup(testFlow,
 					       prepare_test_firewall_post_nat6),
-		cmocka_unit_test_setup(testFlow,
-				       prepare_test_firewall_appid_username),
+			cmocka_unit_test_setup(
+					testFlow,
+					prepare_test_firewall_appid_username),
+			cmocka_unit_test_setup(testFlow,
+					       prepare_test_forwarding_status),
 	};
 
 	return cmocka_run_group_tests(tests, nf_test_setup, nf_test_teardown);

@@ -1176,6 +1176,124 @@ size_t print_mac_vendor(struct printbuf *kafka_line_buffer,
   return print_mac_vendor0(kafka_line_buffer, buffer);
 }
 
+size_t print_forwarding_status(struct printbuf * kafka_line_buffer,
+    const void *vbuffer, const size_t real_field_len,
+    struct flowCache *flowCache) {
+  (void)real_field_len;
+  (void)flowCache;
+  static const char *forwarding_status[] = {
+    "Unknown",
+    "Forwarded",
+    "Dropped",
+    "Consumed",
+  };
+
+  const uint8_t *buffer = vbuffer;
+  return printbuf_memappend_fast_string(
+                          kafka_line_buffer, forwarding_status[buffer[0] >> 6]);
+}
+
+size_t print_forwarding_status_reason(struct printbuf * kafka_line_buffer,
+    const void *vbuffer, const size_t real_field_len,
+    struct flowCache *flowCache) {
+  (void)real_field_len;
+  (void)flowCache;
+  const uint8_t *buffer = vbuffer;
+  const char *forwarding_reason_str = NULL;
+
+  if ((buffer[0] & 0xc0) == 0) {
+    // case FORWARDING_STATUS = Unknown
+    return 0;
+  }
+
+  switch (buffer[0]) {
+  // case FORWARDING_STATUS = Forwarded:
+  case 0x40:
+    forwarding_reason_str = "Unknown";
+    break;
+  case 0x41:
+    forwarding_reason_str = "Fragmented";
+    break;
+  case 0x42:
+    forwarding_reason_str = "Not fragmented";
+    break;
+  case 0x43:
+    forwarding_reason_str = "Tunneled";
+    break;
+  // case FORWARDING_STATUS = Dropped
+  case 0x80:
+    forwarding_reason_str = "Unknown";
+    break;
+  case 0x81:
+    forwarding_reason_str = "ACL deny";
+    break;
+  case 0x82:
+    forwarding_reason_str = "ACL drop";
+    break;
+  case 0x83:
+    forwarding_reason_str = "Unroutable";
+    break;
+  case 0x84:
+    forwarding_reason_str = "Adjacency";
+    break;
+  case 0x85:
+    forwarding_reason_str = "Fragmentation and DF set";
+    break;
+  case 0x86:
+    forwarding_reason_str = "Bad header checksum";
+    break;
+  case 0x87:
+    forwarding_reason_str = "Bad total length";
+    break;
+  case 0x88:
+    forwarding_reason_str = "Bad header length";
+    break;
+  case 0x89:
+    forwarding_reason_str = "Bad TTL";
+    break;
+  case 0x8A:
+    forwarding_reason_str = "Policer";
+    break;
+  case 0x8B:
+    forwarding_reason_str = "WRED";
+    break;
+  case 0x8C:
+    forwarding_reason_str = "RPF";
+    break;
+  case 0x8D:
+    forwarding_reason_str = "For us";
+    break;
+  case 0x8E:
+    forwarding_reason_str = "Bad output interface";
+    break;
+  case 0x8F:
+    forwarding_reason_str = "Hardware";
+    break;
+  // case FORWARDING_STATUS = Consumed
+  case 0xC0:
+    forwarding_reason_str = "Unknown";
+    break;
+  case 0xC1:
+    forwarding_reason_str = "Punt adjacency";
+    break;
+  case 0xC2:
+    forwarding_reason_str = "Incomplete adjacency";
+    break;
+  case 0xC3:
+    forwarding_reason_str = "For us";
+    break;
+  default:
+    break;
+  };
+
+  if (unlikely(forwarding_reason_str == NULL)) {
+    return printbuf_memappend_fast_n10(kafka_line_buffer, buffer[0]);
+  }
+
+  return printbuf_memappend_fast_string(
+                                      kafka_line_buffer, forwarding_reason_str);
+}
+
 static size_t print_engine_id(struct printbuf *kafka_line_buffer,
                               const uint8_t engine_id) {
   assert(kafka_line_buffer);

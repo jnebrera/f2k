@@ -282,6 +282,14 @@ size_t print_proto_name(struct printbuf * kafka_line_buffer,
     const void *buffer, const size_t real_field_len,
     struct flowCache *flowCache);
 
+size_t print_forwarding_status(struct printbuf * kafka_line_buffer,
+    const void *buffer, const size_t real_field_len,
+    struct flowCache *flowCache);
+
+size_t print_forwarding_status_reason(struct printbuf * kafka_line_buffer,
+    const void *buffer, const size_t real_field_len,
+    struct flowCache *flowCache);
+
 size_t print_engine_id_name(struct printbuf * kafka_line_buffer,
     const void *buffer, const size_t real_field_len,
     struct flowCache *flowCache);

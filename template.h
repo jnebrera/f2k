@@ -212,6 +212,8 @@ const char* getStandardFieldId(size_t id);
 	X(STANDARD_ENTERPRISE_ID, IN_DST_MAC_MAP, PRIVATE_ENTITY_ID, QUOTE_OUTPUT, "IN_DST_MAC_MAP", "in_dst_mac_name", "destinationMacAddress", "Name Destination MAC Address",NO_FN, NO_CHILDS)\
 	X(STANDARD_ENTERPRISE_ID, OUT_DST_MAC, 57, QUOTE_OUTPUT, "OUT_DST_MAC", "post_dst_mac", "PostdestinationMacAddress", "Destination MAC Address after observation point", process_post_dst_mac, NO_CHILDS)\
 	X(STANDARD_ENTERPRISE_ID, OUT_DST_MAC_MAP, PRIVATE_ENTITY_ID, QUOTE_OUTPUT, "OUT_DST_MAC_MAP", "out_dst_mac_name", "PostdestinationMacAddress", "Name Destination MAC Address after observation point",NO_FN, NO_CHILDS)\
+	X(STANDARD_ENTERPRISE_ID, FORWARDING_STATUS, 89, QUOTE_OUTPUT, "FORWARDING_STATUS", "forwarding_status",  "forwarding_status", "Forwarding status",print_forwarding_status, C(FORWARDING_STATUS_REASON))\
+	X(STANDARD_ENTERPRISE_ID, FORWARDING_STATUS_REASON, PRIVATE_ENTITY_ID, QUOTE_OUTPUT, "FORWARDING_STATUS_REASON", "forwarding_status_reason",  "forwarding_status_reason", "Forwarding status reason",print_forwarding_status_reason, NO_CHILDS)\
 	X(STANDARD_ENTERPRISE_ID, APPLICATION_ID, 95, QUOTE_OUTPUT, "APPLICATION_ID", "application_id",  "application_id", "Cisco NBAR Application Id",NO_FN, C(APPLICATION_NAME, ENGINE_ID))\
 	X(STANDARD_ENTERPRISE_ID, APPLICATION_NAME, 96, QUOTE_OUTPUT, "APPLICATION_NAME", "application_id_name",  "application_name", "Cisco NBAR Application Name",print_application_id_name, NO_CHILDS)\
 	/* Use selector_id and engine_id */\
