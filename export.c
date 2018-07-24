@@ -346,6 +346,17 @@ size_t print_number(struct printbuf *kafka_line_buffer, const void *vbuffer,
   return printbuf_memappend_fast_n10(kafka_line_buffer,number);
 }
 
+size_t print_hex(struct printbuf *kafka_line_buffer, const void *vbuffer,
+                 const size_t real_field_len, struct flowCache *flowCache) {
+    (void)flowCache;
+
+    const uint8_t *buffer = vbuffer;
+    for (size_t i = 0; i < real_field_len; ++i) {
+        printbuf_memappend_fast_n16(kafka_line_buffer, buffer[i]);
+    }
+    return real_field_len;
+}
+
 size_t print_netflow_type(struct printbuf *kafka_line_buffer,
     const void *vbuffer, const size_t real_field_len,
     struct flowCache *flowCache) {

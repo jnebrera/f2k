@@ -117,6 +117,9 @@ size_t print_number(struct printbuf * kafka_line_buffer,
     const void *buffer, const size_t real_field_len,
     struct flowCache *flowCache);
 
+size_t print_hex(struct printbuf *kafka_line_buffer, const void *vbuffer,
+    const size_t real_field_len, struct flowCache *flowCache);
+
 size_t save_first_switched(struct printbuf *kafka_line_buffer,
     const void *buffer, const size_t real_field_len,
     struct flowCache *flowCache);

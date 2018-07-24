@@ -214,6 +214,11 @@ const char* getStandardFieldId(size_t id);
 	X(STANDARD_ENTERPRISE_ID, OUT_DST_MAC_MAP, PRIVATE_ENTITY_ID, QUOTE_OUTPUT, "OUT_DST_MAC_MAP", "out_dst_mac_name", "PostdestinationMacAddress", "Name Destination MAC Address after observation point",NO_FN, NO_CHILDS)\
 	X(STANDARD_ENTERPRISE_ID, FORWARDING_STATUS, 89, QUOTE_OUTPUT, "FORWARDING_STATUS", "forwarding_status",  "forwarding_status", "Forwarding status",print_forwarding_status, C(FORWARDING_STATUS_REASON))\
 	X(STANDARD_ENTERPRISE_ID, FORWARDING_STATUS_REASON, PRIVATE_ENTITY_ID, QUOTE_OUTPUT, "FORWARDING_STATUS_REASON", "forwarding_status_reason",  "forwarding_status_reason", "Forwarding status reason",print_forwarding_status_reason, NO_CHILDS)\
+	X(STANDARD_ENTERPRISE_ID, NF9_PRIVATE_65, 65, QUOTE_OUTPUT, "65", "65", "65", "Netflow 9 private entity 65", print_hex, NO_CHILDS)\
+	X(STANDARD_ENTERPRISE_ID, NF9_PRIVATE_66, 66, QUOTE_OUTPUT, "66", "66", "66", "Netflow 9 private entity 66", print_hex, NO_CHILDS)\
+	X(STANDARD_ENTERPRISE_ID, NF9_PRIVATE_67, 67, QUOTE_OUTPUT, "67", "67", "67", "Netflow 9 private entity 67", print_hex, NO_CHILDS)\
+	X(STANDARD_ENTERPRISE_ID, NF9_PRIVATE_68, 68, QUOTE_OUTPUT, "68", "68", "68", "Netflow 9 private entity 68", print_hex, NO_CHILDS)\
+	X(STANDARD_ENTERPRISE_ID, NF9_PRIVATE_69, 69, QUOTE_OUTPUT, "69", "69", "69", "Netflow 9 private entity 69", print_hex, NO_CHILDS)\
 	X(STANDARD_ENTERPRISE_ID, APPLICATION_ID, 95, QUOTE_OUTPUT, "APPLICATION_ID", "application_id",  "application_id", "Cisco NBAR Application Id",NO_FN, C(APPLICATION_NAME, ENGINE_ID))\
 	X(STANDARD_ENTERPRISE_ID, APPLICATION_NAME, 96, QUOTE_OUTPUT, "APPLICATION_NAME", "application_id_name",  "application_name", "Cisco NBAR Application Name",print_application_id_name, NO_CHILDS)\
 	/* Use selector_id and engine_id */\
